@@ -2,6 +2,10 @@ export const SESSION_BUILDER_TABS = {
   CAPS_BUILDER: 'new',
   SAVED_CAPS: 'saved',
   ATTACH_TO_SESSION: 'attach',
+  // All-in-one panels (desktop only)
+  LOCAL_SERVER: 'localServer',
+  EXTENSIONS: 'extensions',
+  PYTHON_TESTS: 'pythonTests',
 };
 
 export const SESSION_FILE_EXTENSION = '.appiumsession';

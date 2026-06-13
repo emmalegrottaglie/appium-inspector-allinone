@@ -25,6 +25,7 @@ import Commands from './CommandsTab/Commands.jsx';
 import GestureEditor from './GesturesTab/GestureEditor.jsx';
 import SavedGestures from './GesturesTab/SavedGestures.jsx';
 import HeaderButtons from './Header/HeaderButtons.jsx';
+import RawCommand from './RawCommandTab/RawCommand.jsx';
 import Recorder from './RecorderTab/Recorder.jsx';
 import Screenshot from './Screenshot/Screenshot.jsx';
 import SessionInfo from './SessionInfoTab/SessionInfo.jsx';
@@ -348,6 +349,12 @@ const Inspector = (props) => {
               key: INSPECTOR_TABS.COMMANDS,
               disabled: !showScreenshot,
               children: <Commands {...props} />,
+            },
+            {
+              label: t('Raw Command'),
+              key: INSPECTOR_TABS.RAW_COMMAND,
+              disabled: !showScreenshot,
+              children: <RawCommand {...props} />,
             },
             {
               label: t('Gestures'),

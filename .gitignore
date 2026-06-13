@@ -1,5 +1,7 @@
 node_modules
 
+resources/
+
 dist
 dist-browser
 release

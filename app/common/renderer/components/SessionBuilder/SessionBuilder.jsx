@@ -17,6 +17,9 @@ import {log} from '../../utils/logger.js';
 import AppSettings from './AppSettings/AppSettings.jsx';
 import AttachToSession from './AttachToSessionTab/AttachToSession.jsx';
 import CapabilityEditor from './CapabilityBuilderTab/CapabilityEditor.jsx';
+import Extensions from './ExtensionsTab/Extensions.jsx';
+import LocalServer from './LocalServerTab/LocalServer.jsx';
+import PythonPanel from './PythonTab/PythonPanel.jsx';
 import SavedCapabilitySets from './SavedCapabilitySetsTab/SavedCapabilitySets.jsx';
 import AdvancedServerParams from './ServerDetails/AdvancedServerParams.jsx';
 import CloudProviders from './ServerDetails/CloudProviders.jsx';
@@ -177,6 +180,29 @@ const Session = (props) => {
               className: styles.scrollingTab,
               children: <AttachToSession loadNewSession={loadNewSession} {...props} />,
             },
+            // All-in-one panels — desktop app only (need window.electronIPC).
+            ...(window.electronIPC
+              ? [
+                  {
+                    label: t('Local Server'),
+                    key: SESSION_BUILDER_TABS.LOCAL_SERVER,
+                    className: styles.scrollingTab,
+                    children: <LocalServer />,
+                  },
+                  {
+                    label: t('Drivers & Plugins'),
+                    key: SESSION_BUILDER_TABS.EXTENSIONS,
+                    className: styles.scrollingTab,
+                    children: <Extensions />,
+                  },
+                  {
+                    label: t('Python Tests'),
+                    key: SESSION_BUILDER_TABS.PYTHON_TESTS,
+                    className: styles.scrollingTab,
+                    children: <PythonPanel />,
+                  },
+                ]
+              : []),
           ]}
         />
         <Divider />

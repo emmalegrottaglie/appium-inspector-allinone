@@ -3,6 +3,7 @@ import debug from 'electron-debug';
 
 import {installExtensions} from './debug.js';
 import {isDev, setupIPCListeners} from './helpers.js';
+import {killAllProcesses} from './process-runner.js';
 import {setupMainWindow} from './windows.js';
 
 // Used when opening Inspector through an .appiumsession file (Windows/Linux).
@@ -19,6 +20,9 @@ app.on('open-file', (event, filePath) => {
 app.on('window-all-closed', () => {
   app.quit();
 });
+
+// Reap any child processes (incl. the bundled Appium server) on quit.
+app.on('before-quit', () => killAllProcesses());
 
 app.on('ready', async () => {
   if (isDev) {

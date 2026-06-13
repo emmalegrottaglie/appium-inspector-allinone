@@ -27,6 +27,35 @@
 
 ---
 
+## 🚀 All-in-One fork
+
+This is a fork of [appium/appium-inspector](https://github.com/appium/appium-inspector)
+extended into a **self-contained desktop app** — everything you need to inspect *and*
+automate, with no separate Appium install, driver setup, or Python wiring. From the GUI you can:
+
+- **🖥️ Run a bundled Appium server** — Appium 3.5.0 ships inside the app. Start/stop it,
+  watch the live log, see whether it's `bundled` or `system`.
+- **🧩 Manage drivers & plugins** — install / update / uninstall / doctor Appium
+  extensions into an app-isolated home, with a third-party safety gate.
+- **🐍 Author & run Python tests** — auto-detect Python, build a venv, install
+  `Appium-Python-Client` + `pytest`, edit tests in-app (with one-click **Format**),
+  and run them with a parsed pass/fail summary.
+- **📼 Record → save → run** — record actions, **Save As** a test in any of 8
+  languages, drop it in the runner, and watch it go green.
+- **⚡ Raw WebDriver commands** — a Postman-style panel that talks straight to the
+  live session's WebDriver endpoints.
+
+![All-in-One — Drivers & Plugins, Local Server, Python Tests](./docs/assets/all-in-one/drivers-plugins.png)
+
+📖 **Full details:** [**ALL-IN-ONE.md**](ALL-IN-ONE.md) (architecture, per-feature
+reference, build steps, security model, troubleshooting) · [CHANGELOG](CHANGELOG.all-in-one.md)
+
+> Build a self-contained app: `npm install` → `npm install --prefix resources/appium appium@3.5.0`
+> → `npm run build:electron` → `npx electron-builder --dir`. Python is detected at runtime
+> (not bundled); the server stays bound to `127.0.0.1`.
+
+---
+
 Appium Inspector is a GUI assistant tool for Appium, providing visual inspection of the application
 under test. It can show the application page screenshot along with its page source, and includes
 various features for interacting with the app.

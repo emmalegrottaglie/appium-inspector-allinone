@@ -1,0 +1,108 @@
+.panel {
+  padding: 12px;
+  height: 100%;
+  overflow: auto;
+}
+
+.fill {
+  width: 100%;
+}
+
+.card {
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cardHeader {
+  justify-content: space-between;
+  width: 100%;
+}
+
+.actions {
+  align-items: center;
+}
+
+.row {
+  width: 100%;
+  display: flex;
+}
+
+.row :global(.ant-input-group-wrapper) {
+  flex: 1 1 auto;
+}
+
+.dir {
+  display: block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.files {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.1));
+  border-radius: 6px;
+}
+
+.fileItem {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.files :global(.ant-list-item) {
+  cursor: pointer;
+}
+
+.files :global(.ant-list-item):hover {
+  background: var(--ant-color-fill-quaternary, rgba(0, 0, 0, 0.03));
+}
+
+.fileActive {
+  background: var(--ant-color-primary-bg, rgba(22, 119, 255, 0.1));
+}
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.1));
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important;
+  font-size: 12px;
+  white-space: pre;
+  overflow-wrap: normal;
+}
+
+.hint {
+  font-size: 12px;
+}
+
+.totals {
+  margin-top: 4px;
+}
+
+.confirm {
+  width: 100%;
+}
+
+.log {
+  margin: 0;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: var(--ant-color-fill-quaternary, rgba(0, 0, 0, 0.03));
+  border-radius: 6px;
+}

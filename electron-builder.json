@@ -6,6 +6,7 @@
     "output": "release"
   },
   "files": ["dist/"],
+  "afterPack": "./build/afterPack.cjs",
   "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
   "fileAssociations": [
     {

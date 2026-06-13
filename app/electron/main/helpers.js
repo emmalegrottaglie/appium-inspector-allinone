@@ -3,7 +3,13 @@ import {readFile} from 'node:fs/promises';
 import {ipcMain, nativeTheme, shell} from 'electron';
 import settings from 'electron-settings';
 
+import {setupExtensionsIPC} from './appium-extensions.js';
+import {setupAppiumIPC} from './appium-server.js';
+import {setupCodeExportIPC} from './code-export.js';
 import i18n from './i18next.js';
+import {setupProcessIPC} from './process-runner.js';
+import {setupPythonEnvIPC} from './python-env.js';
+import {setupPythonTestsIPC} from './python-tests.js';
 
 export const isDev = process.env.NODE_ENV === 'development';
 
@@ -20,6 +26,15 @@ export function setupIPCListeners(getOpenFilePath) {
     }
     return await readFile(openFilePath, 'utf8');
   });
+
+  // All-in-one: constrained IPC endpoints for the bundled server, extension
+  // management, the Python environment, and the pytest runner.
+  setupProcessIPC();
+  setupAppiumIPC();
+  setupExtensionsIPC();
+  setupPythonEnvIPC();
+  setupPythonTestsIPC();
+  setupCodeExportIPC();
 }
 
 export const t = (string, params = null) => i18n.t(string, params);
