@@ -63,6 +63,19 @@ async function pickWorkingDir() {
 
 const SKIP_DIRS = new Set(['__pycache__', 'node_modules', 'venv', '.venv', '.git']);
 
+const isWin = process.platform === 'win32';
+
+// Runnable test file types and how each is executed.
+//   .py            -> pytest (venv)            structured JUnit summary
+//   .robot         -> robot  (venv)            structured xUnit summary
+//   .rb            -> ruby   (system)          exit-code only
+//   .js / .mjs     -> node | oxygen (system)   exit-code only
+const TEST_EXTS = ['.py', '.robot', '.rb', '.js', '.mjs'];
+
+// On Windows, npm/gem/oxygen are .cmd shims that won't resolve under
+// shell:false; node/ruby are real .exe and resolve by bare name.
+const winCmd = (name) => (isWin ? `${name}.cmd` : name);
+
 /** Register the Python test IPC channels. Call from setupIPCListeners(). */
 export function setupPythonTestsIPC() {
   ipcMain.handle('python:pickWorkingDir', () => pickWorkingDir());
@@ -72,6 +85,22 @@ export function setupPythonTestsIPC() {
     saveTestFile(dir, relPath, content),
   );
   ipcMain.handle('python:run', (evt, payload) => runTests(evt.sender, payload));
+}
+
+function langOf(relPath) {
+  if (!relPath) {
+    return 'python'; // "Run all" with no file -> pytest over the dir
+  }
+  if (relPath.endsWith('.robot')) {
+    return 'robot';
+  }
+  if (relPath.endsWith('.rb')) {
+    return 'ruby';
+  }
+  if (relPath.endsWith('.js') || relPath.endsWith('.mjs')) {
+    return 'js';
+  }
+  return 'python';
 }
 
 function listTests(dir) {
@@ -88,7 +117,7 @@ function listTests(dir) {
       const full = join(d, ent.name);
       if (ent.isDirectory()) {
         walk(full, depth + 1);
-      } else if (ent.isFile() && ent.name.endsWith('.py')) {
+      } else if (ent.isFile() && TEST_EXTS.some((e) => ent.name.endsWith(e))) {
         out.push(relative(dir, full));
       }
     }
@@ -104,8 +133,8 @@ function readTestFile(dir, relPath) {
 
 function saveTestFile(dir, relPath, content) {
   assertDir(dir);
-  if (typeof relPath !== 'string' || !relPath.endsWith('.py')) {
-    throw new Error('Only .py files can be saved.');
+  if (typeof relPath !== 'string' || !TEST_EXTS.some((e) => relPath.endsWith(e))) {
+    throw new Error(`Only test files (${TEST_EXTS.join(', ')}) can be saved.`);
   }
   if (typeof content !== 'string') {
     throw new Error('File content must be a string.');
@@ -174,11 +203,31 @@ function summarizeJUnit(xmlText) {
   return {totals, tests};
 }
 
+// Send the structured result (parsed from an XML report when one exists) and
+// clean up the temp report dir.
+function emitResult(sender, runId, {code, signal, error}, reportPath, reportDir) {
+  let summary = null;
+  if (reportPath) {
+    try {
+      summary = summarizeJUnit(readFileSync(reportPath, 'utf8'));
+    } catch {
+      // no/garbled report -> exit-code only
+    }
+  }
+  if (sender && !sender.isDestroyed()) {
+    sender.send('python:result', {runId, code, signal, error, summary});
+  }
+  if (reportDir) {
+    try {
+      rmSync(reportDir, {recursive: true, force: true});
+    } catch {
+      /* best effort */
+    }
+  }
+}
+
 async function runTests(sender, {workingDir, paths = [], keyword = null} = {}) {
   assertDir(workingDir);
-  if (!venvExists()) {
-    return {status: 'env_not_ready'};
-  }
 
   const fileArgs = [];
   for (const p of paths) {
@@ -189,40 +238,53 @@ async function runTests(sender, {workingDir, paths = [], keyword = null} = {}) {
     throw new Error('Invalid -k expression.');
   }
 
-  const reportDir = mkdtempSync(join(tmpdir(), 'appium-gui-junit-'));
-  const reportPath = join(reportDir, `${randomUUID()}.xml`);
+  const lang = langOf(fileArgs[0]);
 
-  const args = [
-    '-m',
-    'pytest',
-    ...fileArgs,
-    ...(keyword != null ? ['-k', keyword] : []),
-    '-o',
-    'junit_family=xunit2',
-    `--junit-xml=${reportPath}`,
-  ];
+  // Python & Robot run on the managed venv; the others use a system runtime.
+  if ((lang === 'python' || lang === 'robot') && !venvExists()) {
+    return {status: 'env_not_ready'};
+  }
+
+  let command;
+  let args;
+  let reportDir = null;
+  let reportPath = null;
+
+  if (lang === 'python') {
+    reportDir = mkdtempSync(join(tmpdir(), 'appium-gui-junit-'));
+    reportPath = join(reportDir, `${randomUUID()}.xml`);
+    command = venvPython();
+    args = [
+      '-m',
+      'pytest',
+      ...fileArgs,
+      ...(keyword != null ? ['-k', keyword] : []),
+      '-o',
+      'junit_family=xunit2',
+      `--junit-xml=${reportPath}`,
+    ];
+  } else if (lang === 'robot') {
+    reportDir = mkdtempSync(join(tmpdir(), 'appium-gui-robot-'));
+    reportPath = join(reportDir, 'xunit.xml');
+    command = venvPython();
+    // robot writes log/report/output into --outputdir; --xunit is JUnit-compatible.
+    args = ['-m', 'robot', '--outputdir', reportDir, '--xunit', reportPath, ...fileArgs];
+  } else if (lang === 'ruby') {
+    command = 'ruby'; // ruby.exe resolves by bare name on Windows
+    args = [...fileArgs];
+  } else {
+    // js: WebdriverIO scripts run with node; Oxygen scripts need the oxygen CLI.
+    const first = fileArgs[0];
+    const content = first ? readFileSync(safeJoin(workingDir, first), 'utf8') : '';
+    const isOxygen = /\b(mob|win)\.init\s*\(|oxygen/i.test(content) && !/webdriverio/.test(content);
+    command = isOxygen ? winCmd('oxygen') : 'node';
+    args = [...fileArgs];
+  }
 
   const {runId} = startProcess(
     sender,
-    {command: venvPython(), args, options: {cwd: workingDir}},
-    {
-      onExit: ({code, signal, error}) => {
-        let summary = null;
-        try {
-          summary = summarizeJUnit(readFileSync(reportPath, 'utf8'));
-        } catch {
-          // no report (e.g. collection error / interpreter crash) -> exit-code only
-        }
-        if (sender && !sender.isDestroyed()) {
-          sender.send('python:result', {runId, code, signal, error, summary});
-        }
-        try {
-          rmSync(reportDir, {recursive: true, force: true});
-        } catch {
-          /* best effort */
-        }
-      },
-    },
+    {command, args, options: {cwd: workingDir}, shell: command.endsWith('.cmd')},
+    {onExit: (res) => emitResult(sender, runId, res, reportPath, reportDir)},
   );
-  return {status: 'started', runId};
+  return {status: 'started', runId, lang};
 }

@@ -29,10 +29,26 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
   WebdriverIO/Oxygen, Ruby, Robot) via its dropdown — with the correct file
   extension. Lets you go from a recording straight to a saved test (e.g. into the
   Python Tests working folder) instead of copy-pasting steps.
-- **In-app Python test editor** (in the *Python Tests* tab). Open/edit/create
-  `.py` files in the working directory, with a one-click **Format** that wraps
-  recorded steps into a complete runnable test (imports + `def test_*` +
-  `try/finally` setup/teardown), **Save**, and **Save & run**.
+- **In-app test editor** (in the *Tests* tab). Open/edit/create test files in the
+  working directory, with one-click **Save** and **Save & run** (runs just that
+  file). For Python, a **Format** split-button wraps recorded steps into a
+  complete runnable test — it detects which imports the steps actually use
+  (`AppiumBy`, `ActionChains`/`ActionBuilder`/`PointerInput`/`interaction`,
+  `WebDriverWait`), adds a `def test_*` + `try/finally` setup/teardown, and offers
+  an optional implicit-wait variant.
+- **Multi-language test runners** (the *Tests* tab, renamed from *Python Tests*).
+  Beyond Python/pytest, the runner now executes **Robot Framework** (`.robot`, on
+  the same managed venv via `robotframework-appiumlibrary`, parsed xUnit results),
+  **Ruby** (`.rb` via a system Ruby + `appium_lib_core`), and **JavaScript**
+  (`.js` via system Node + WebdriverIO, or the Oxygen CLI). A *Languages &
+  runtimes* card detects Ruby/Node/Oxygen on PATH and installs each language's
+  client deps. Python & Robot give per-test results; Ruby & JS report by exit
+  code. (`system-runtimes.js`, `use-runtimes.jsx`.)
+- **"Scroll to & tap" recorder action** (Inspector → Source tab, Android). One
+  click on a selected element scrolls a scrollable container until it's visible
+  and taps it, recording a robust `UiScrollable(...).scrollIntoView(...)` locator
+  (anchored on a stable content-desc / resource-id) instead of brittle
+  coordinate swipes + `.instance(N)`.
 - **Raw WebDriver command panel** (session inspector → *Raw Command* tab). A
   Postman-style panel that sends GET/POST/DELETE requests straight to the
   server's WebDriver endpoints, riding the live session (`{sessionId}` expands).
@@ -63,8 +79,15 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
 
 ### Fixed
 
-- Managed server now starts with `--allow-insecure=session_discovery` so the
-  Attach to Session tab works and the server log no longer floods with
+- **`.cmd` spawn crash (Node 20+ / Windows).** Spawning a `.cmd` shim
+  (`npm`/`gem`/`oxygen`) with `shell:false` throws `EINVAL` synchronously, which
+  was rejecting the whole runtime-detection `Promise.all` (so Ruby/Node showed as
+  "not found" even when installed). `startProcess` now catches synchronous spawn
+  failures, and `.cmd` invocations opt into `shell:true` (fixed command
+  templates, so still injection-safe).
+- Managed server starts with `--allow-insecure=*:session_discovery` (the `*:`
+  scope is required by Appium 3 — a bare feature name is rejected) so the Attach
+  to Session tab works and the server log no longer floods with
   `Potentially insecure feature 'session_discovery' has not been enabled`. Safe
   because the server is loopback-only.
 

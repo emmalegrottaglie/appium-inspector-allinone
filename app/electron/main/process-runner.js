@@ -32,22 +32,38 @@ const running = new Map();
  * @param {(d: object) => void} [hooks.onExit]   - {code, signal, error}
  * @returns {{runId: string, pid: number|undefined}}
  */
-export function startProcess(sender, {command, args = [], options = {}}, hooks = {}) {
+export function startProcess(sender, {command, args = [], options = {}, shell = false}, hooks = {}) {
   const runId = randomUUID();
-
-  const child = spawn(command, args, {
-    ...options,
-    env: {...process.env, ...(options.env || {})},
-    shell: false, // never via a shell -> no shell injection
-  });
-
-  running.set(runId, child);
 
   const send = (channel, payload) => {
     if (sender && !sender.isDestroyed()) {
       sender.send(channel, {runId, ...payload});
     }
   };
+
+  let child;
+  try {
+    child = spawn(command, args, {
+      ...options,
+      env: {...process.env, ...(options.env || {})},
+      // shell:false by default -> no shell injection. A few managed Windows
+      // tools are .cmd shims that Node refuses to spawn without a shell
+      // (throws EINVAL); those callers opt in via shell:true with fixed,
+      // non-user command templates.
+      shell,
+    });
+  } catch (err) {
+    // Synchronous spawn failure (bad path, or a .cmd without a shell). Report it
+    // as a failed exit rather than throwing, so callers (and a Promise.all over
+    // several probes) stay intact.
+    queueMicrotask(() => {
+      hooks.onExit?.({code: null, signal: null, error: err.message});
+      send('process:exit', {code: null, signal: null, error: err.message});
+    });
+    return {runId, pid: undefined};
+  }
+
+  running.set(runId, child);
 
   child.stdout?.setEncoding('utf8');
   child.stderr?.setEncoding('utf8');

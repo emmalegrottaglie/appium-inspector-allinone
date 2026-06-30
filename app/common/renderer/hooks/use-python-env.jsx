@@ -110,6 +110,12 @@ export function usePythonEnv() {
     [startInstall],
   );
 
+  // Add Robot Framework support to the venv (managed packages — no confirmation).
+  const installRobot = useCallback(() => {
+    setLog([]);
+    return startInstall({packages: ['robotframework', 'robotframework-appiumlibrary']});
+  }, [startInstall]);
+
   return {
     status,
     phase,
@@ -119,5 +125,6 @@ export function usePythonEnv() {
     refresh,
     setup,
     installPackage,
+    installRobot,
   };
 }

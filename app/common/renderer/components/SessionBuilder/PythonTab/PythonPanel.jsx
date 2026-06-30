@@ -13,7 +13,25 @@ import {useTranslation} from 'react-i18next';
 
 import {usePythonEnv} from '../../../hooks/use-python-env.jsx';
 import {usePythonTests} from '../../../hooks/use-python-tests.jsx';
+import {useRuntimes} from '../../../hooks/use-runtimes.jsx';
 import styles from './PythonPanel.module.css';
+
+// Mirror of langOf() in python-tests.js — pick the runner from the file type.
+const langOf = (name) => {
+  if (!name) {
+    return 'python';
+  }
+  if (name.endsWith('.robot')) {
+    return 'robot';
+  }
+  if (name.endsWith('.rb')) {
+    return 'ruby';
+  }
+  if (name.endsWith('.js') || name.endsWith('.mjs')) {
+    return 'js';
+  }
+  return 'python';
+};
 
 const {Text} = Typography;
 const {TextArea} = Input;
@@ -140,9 +158,11 @@ const EnvStatus = ({status}) => {
 /** Python environment setup + pytest runner. Desktop-only. */
 const PythonPanel = () => {
   const {t} = useTranslation();
-  const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage} = usePythonEnv();
+  const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage, installRobot} =
+    usePythonEnv();
   const {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests} =
     usePythonTests();
+  const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
   const [keyword, setKeyword] = useState('');
 
   // In-app editor state
@@ -159,13 +179,17 @@ const PythonPanel = () => {
     setDirty(false);
   };
 
+  const TEST_EXTS = ['.py', '.robot', '.rb', '.js', '.mjs'];
+
   const startNewFile = () => {
     let name = newName.trim() || 'test_recorded.py';
-    if (!name.endsWith('.py')) {
+    if (!TEST_EXTS.some((e) => name.endsWith(e))) {
       name += '.py';
     }
     setOpenFile(name);
-    setEditorText(NEW_FILE_TEMPLATE);
+    // Only Python gets a scaffold; other languages come fully-formed from the
+    // Recorder's Save As, so start them blank.
+    setEditorText(name.endsWith('.py') ? NEW_FILE_TEMPLATE : '');
     setDirty(true);
     setNewName('');
   };
@@ -179,7 +203,7 @@ const PythonPanel = () => {
     if (!openFile) {
       return null;
     }
-    const rel = openFile.endsWith('.py') ? openFile : `${openFile}.py`;
+    const rel = TEST_EXTS.some((e) => openFile.endsWith(e)) ? openFile : `${openFile}.py`;
     setSaving(true);
     try {
       await saveFile(rel, editorText);
@@ -201,6 +225,7 @@ const PythonPanel = () => {
 
   const envLogRef = useRef(null);
   const runLogRef = useRef(null);
+  const rtLogRef = useRef(null);
   useEffect(() => {
     if (envLogRef.current) {
       envLogRef.current.scrollTop = envLogRef.current.scrollHeight;
@@ -211,6 +236,11 @@ const PythonPanel = () => {
       runLogRef.current.scrollTop = runLogRef.current.scrollHeight;
     }
   }, [runLog]);
+  useEffect(() => {
+    if (rtLogRef.current) {
+      rtLogRef.current.scrollTop = rtLogRef.current.scrollHeight;
+    }
+  }, [rtLog]);
 
   if (!window.electronIPC?.pythonEnv) {
     return (
@@ -228,6 +258,19 @@ const PythonPanel = () => {
   const settingUp = phase === 'venv' || phase === 'install';
   const ready = status?.ready;
   const running = run?.status === 'running';
+  const rtBusy = rtOp?.status === 'running';
+
+  // Can the open file be run, given its language's toolchain?
+  const openLang = langOf(openFile);
+  const canRunOpen =
+    !!openFile &&
+    {
+      python: !!ready,
+      robot: !!status?.robotReady,
+      ruby: !!runtimes?.ruby?.found,
+      js: !!runtimes?.node?.found || !!runtimes?.oxygen?.found,
+    }[openLang];
+  const isPyFile = openLang === 'python';
 
   return (
     <div className={styles.panel}>
@@ -281,6 +324,65 @@ const PythonPanel = () => {
 
         <section className={styles.card}>
           <Space className={styles.cardHeader}>
+            <Text strong>{t('Languages & runtimes')}</Text>
+          </Space>
+          <Text type="secondary" className={styles.hint}>
+            {t('Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).')}
+          </Text>
+
+          <Space wrap>
+            <Tag color={status?.robotReady ? 'success' : 'default'}>Robot Framework</Tag>
+            {status?.robotReady ? (
+              <Text type="success">{t('ready')} (.robot)</Text>
+            ) : (
+              <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
+                {t('Add Robot Framework')}
+              </Button>
+            )}
+            {!status?.venv && <Text type="secondary">{t('set up the venv first')}</Text>}
+          </Space>
+
+          <Space wrap>
+            <Tag color={runtimes?.ruby?.found ? 'success' : 'default'}>Ruby</Tag>
+            <Text type="secondary">
+              {runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}
+            </Text>
+            <Button
+              size="small"
+              onClick={installRubyGems}
+              loading={rtBusy && rtOp?.kind === 'ruby'}
+              disabled={!runtimes?.ruby?.found}
+            >
+              {t('Install appium_lib_core')}
+            </Button>
+          </Space>
+
+          <Space wrap>
+            <Tag color={runtimes?.node?.found ? 'success' : 'default'}>Node / WebdriverIO</Tag>
+            <Text type="secondary">
+              {runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}
+            </Text>
+            <Button
+              size="small"
+              onClick={() => installJsDeps(workingDir)}
+              loading={rtBusy && rtOp?.kind === 'js'}
+              disabled={!runtimes?.node?.found || !workingDir}
+            >
+              {t('Install WebdriverIO')}
+            </Button>
+            {runtimes?.oxygen?.found && <Tag color="success">oxygen CLI</Tag>}
+            {!workingDir && <Text type="secondary">{t('choose a working dir first')}</Text>}
+          </Space>
+
+          {(rtBusy || rtLog.length > 0) && (
+            <pre className={styles.log} ref={rtLogRef}>
+              {rtLog.map((l) => l.chunk).join('')}
+            </pre>
+          )}
+        </section>
+
+        <section className={styles.card}>
+          <Space className={styles.cardHeader}>
             <Text strong>{t('Tests')}</Text>
           </Space>
           <Space wrap>
@@ -309,7 +411,7 @@ const PythonPanel = () => {
                 }
                 className={styles.files}
                 dataSource={files}
-                locale={{emptyText: t('No .py files found')}}
+                locale={{emptyText: t('No test files found (.py, .robot, .rb, .js)')}}
                 renderItem={(f) => (
                   <List.Item
                     className={`${styles.fileItem} ${openFile === f ? styles.fileActive : ''}`}
@@ -342,26 +444,29 @@ const PythonPanel = () => {
                   {dirty ? ' •' : ''}
                 </Text>
                 <Space>
-                  <Dropdown.Button
-                    size="small"
-                    icon={<IconChevronDown size={14} />}
-                    onClick={() => formatEditor()}
-                    menu={{
-                      items: [
-                        {
-                          key: 'wait',
-                          label: t('Format + implicit wait (10s)'),
+                  <Tag>{openLang}</Tag>
+                  {isPyFile && (
+                    <Dropdown.Button
+                      size="small"
+                      icon={<IconChevronDown size={14} />}
+                      onClick={() => formatEditor()}
+                      menu={{
+                        items: [
+                          {
+                            key: 'wait',
+                            label: t('Format + implicit wait (10s)'),
+                          },
+                        ],
+                        onClick: ({key}) => {
+                          if (key === 'wait') {
+                            formatEditor({implicitWait: true});
+                          }
                         },
-                      ],
-                      onClick: ({key}) => {
-                        if (key === 'wait') {
-                          formatEditor({implicitWait: true});
-                        }
-                      },
-                    }}
-                  >
-                    <IconWand size={14} /> {t('Format')}
-                  </Dropdown.Button>
+                      }}
+                    >
+                      <IconWand size={14} /> {t('Format')}
+                    </Dropdown.Button>
+                  )}
                   <Button
                     size="small"
                     icon={<IconDeviceFloppy size={14} />}
@@ -377,7 +482,7 @@ const PythonPanel = () => {
                     icon={<IconPlayerPlay size={14} />}
                     onClick={runOpenFile}
                     loading={running}
-                    disabled={!ready}
+                    disabled={!canRunOpen}
                   >
                     {t('Save & run')}
                   </Button>
@@ -394,7 +499,9 @@ const PythonPanel = () => {
                 className={styles.code}
               />
               <Text type="secondary" className={styles.hint}>
-                {t('Format wraps recorded steps with imports, a test function, and setup/teardown.')}
+                {isPyFile
+                  ? t('Format wraps recorded steps with imports, a test function, and setup/teardown.')
+                  : t('Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.', {lang: openLang})}
               </Text>
             </div>
           )}

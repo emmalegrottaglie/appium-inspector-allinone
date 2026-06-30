@@ -24,6 +24,10 @@ const isWin = process.platform === 'win32';
 // resolves a version compatible with whatever interpreter is present.
 export const REQUIRED_PACKAGES = ['Appium-Python-Client', 'pytest'];
 
+// Robot Framework runs on the same venv (it's Python). Installing these adds
+// `.robot` execution. Managed (no third-party confirmation needed).
+export const ROBOT_PACKAGES = ['robotframework', 'robotframework-appiumlibrary'];
+
 // Appium-Python-Client requires >= 3.9; that's our interpreter floor.
 const MIN_PYTHON = [3, 9];
 
@@ -115,7 +119,9 @@ async function status() {
   });
   const ready =
     python.found && python.meetsMinimum && venv && required.every((r) => r.installed);
-  return {python, venv, packages: pkgs, required, ready};
+  const robotReady =
+    venv && 'robotframework' in pkgs && 'robotframework-appiumlibrary' in pkgs;
+  return {python, venv, packages: pkgs, required, ready, robotReady};
 }
 
 async function createVenv(sender) {
@@ -136,7 +142,7 @@ async function installDeps(sender, {packages = REQUIRED_PACKAGES, allowThirdPart
     return {status: 'venv_missing'};
   }
   const requiredBases = new Set(
-    REQUIRED_PACKAGES.map((p) => p.toLowerCase().split('==')[0]),
+    [...REQUIRED_PACKAGES, ...ROBOT_PACKAGES].map((p) => p.toLowerCase().split('==')[0]),
   );
   for (const spec of packages) {
     validatePkg(spec);

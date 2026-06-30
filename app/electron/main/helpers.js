@@ -10,6 +10,7 @@ import i18n from './i18next.js';
 import {setupProcessIPC} from './process-runner.js';
 import {setupPythonEnvIPC} from './python-env.js';
 import {setupPythonTestsIPC} from './python-tests.js';
+import {setupRuntimesIPC} from './system-runtimes.js';
 
 export const isDev = process.env.NODE_ENV === 'development';
 
@@ -34,6 +35,7 @@ export function setupIPCListeners(getOpenFilePath) {
   setupExtensionsIPC();
   setupPythonEnvIPC();
   setupPythonTestsIPC();
+  setupRuntimesIPC();
   setupCodeExportIPC();
 }
 

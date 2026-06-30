@@ -196,7 +196,7 @@ const Session = (props) => {
                     children: <Extensions />,
                   },
                   {
-                    label: t('Python Tests'),
+                    label: t('Tests'),
                     key: SESSION_BUILDER_TABS.PYTHON_TESTS,
                     className: styles.scrollingTab,
                     children: <PythonPanel />,

@@ -7,14 +7,21 @@ into a self-contained desktop app. From the GUI you can:
    app; no separate `npm i -g appium` required.
 2. **Manage drivers & plugins** — install / update / uninstall / doctor Appium
    extensions into an app-private home.
-3. **Author & run Python tests** — detect Python, build an isolated virtualenv,
-   install `Appium-Python-Client` + `pytest`, pick a working directory, and run
-   pytest with streamed output and a parsed pass/fail summary.
+3. **Author & run tests** — detect Python, build an isolated virtualenv, install
+   `Appium-Python-Client` + `pytest`, edit tests in-app, and run with streamed
+   output and a parsed pass/fail summary. Also runs **Robot Framework** (same
+   venv), **Ruby**, and **JavaScript/WebdriverIO** via your system toolchains.
 4. **Fire raw WebDriver commands** — a Postman-style panel that talks straight to
    the server's WebDriver endpoints, riding the live session.
+5. **Record robust scroll steps** — a "Scroll to & tap" action emits a
+   `scrollIntoView` locator instead of brittle coordinate swipes (Android).
 
 Everything else (capability builder, inspector, gestures, recorder, etc.) works
-exactly as upstream. Python is the only supported test-authoring language.
+exactly as upstream. Python is the primary test language (with full in-app
+authoring); Robot/Ruby/JS run via detected system toolchains.
+
+> See [CHANGELOG.all-in-one.md](CHANGELOG.all-in-one.md) for the full,
+> chronological list of additions and fixes.
 
 ---
 
@@ -27,8 +34,9 @@ so the browser build is unchanged.
 |---|---|
 | **Local Server** | Start screen → lower tab row → **Local Server** |
 | **Drivers & Plugins** | Start screen → lower tab row → **Drivers & Plugins** |
-| **Python Tests** | Start screen → lower tab row → **Python Tests** |
+| **Tests** (Python/Robot/Ruby/JS) | Start screen → lower tab row → **Tests** |
 | **Raw Command** | Inside a live session → inspector tab → **Raw Command** |
+| **Scroll to & tap** | Inside a live session → Source tab → selected-element actions (Android) |
 
 The lower tab row is the one that also holds *Capability Builder / Saved
 Capability Sets / Attach to Session*.

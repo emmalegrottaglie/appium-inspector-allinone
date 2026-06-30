@@ -535,6 +535,85 @@ export function findAndAssign(strategy, selector, variableName, isArray) {
   };
 }
 
+// Quote a value for embedding inside a UiAutomator selector string.
+const uiAutomatorQuote = (v) =>
+  `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+
+/**
+ * Build an Android UiAutomator `scrollIntoView` selector that scrolls a
+ * scrollable container until the element (matched by a STABLE sub-locator) is on
+ * screen. Far more robust than recorded coordinate-swipes + `.instance(N)`.
+ * Returns null if the element has no stable sub-locator to anchor on.
+ * @param {Array<{key: string, selector: string}>} elementLocatorsData
+ */
+export function buildScrollIntoView(elementLocatorsData) {
+  const byKey = {};
+  for (const {key, selector} of elementLocatorsData || []) {
+    byKey[key] = selector;
+  }
+  let inner = null;
+  if (byKey['accessibility id']) {
+    inner = `new UiSelector().description(${uiAutomatorQuote(byKey['accessibility id'])})`;
+  } else if (byKey.id) {
+    inner = `new UiSelector().resourceId(${uiAutomatorQuote(byKey.id)})`;
+  } else if (byKey['-android uiautomator'] && !byKey['-android uiautomator'].includes('.instance(')) {
+    // An optimal, non-positional UiAutomator selector can be reused as-is.
+    inner = byKey['-android uiautomator'];
+  }
+  if (!inner) {
+    return null;
+  }
+  return `new UiScrollable(new UiSelector().scrollable(true)).scrollIntoView(${inner})`;
+}
+
+/**
+ * Scroll a scrollable container until the selected element is visible, then tap
+ * it. The live find scrolls the device; tapping it through the normal path
+ * records a `findAndAssign` with the robust `scrollIntoView` locator (no
+ * coordinate swipes, no `.instance(N)`) followed by the click. Android only.
+ */
+export function scrollToElement(elementLocatorsData) {
+  return async (dispatch, getState) => {
+    const selector = buildScrollIntoView(elementLocatorsData);
+    if (!selector) {
+      showError(
+        new Error(
+          i18n.t('noStableScrollLocator', {
+            defaultValue:
+              'This element has no stable locator (accessibility id / resource-id) to scroll to. ' +
+              'Pick an element that has a content-desc or resource-id.',
+          }),
+        ),
+        {secs: 6},
+      );
+      return;
+    }
+    const strategy = '-android uiautomator';
+    dispatch({type: METHOD_CALL_REQUESTED});
+    const findRes = await callClientMethod({strategy, selector, skipRefresh: true})(
+      dispatch,
+      getState,
+    );
+    dispatch({type: METHOD_CALL_DONE});
+    if (!findRes || !findRes.id) {
+      showError(
+        new Error(
+          i18n.t('scrollIntoViewFailed', {
+            defaultValue: 'Could not scroll to or locate the element on screen.',
+          }),
+        ),
+        {secs: 6},
+      );
+      return;
+    }
+    // Tapping the freshly-found element goes through applyClientMethod, which
+    // records findAndAssign(scrollIntoView selector) + the click, and refreshes
+    // the source/screenshot.
+    const tap = applyClientMethod({methodName: 'elementClick', elementId: findRes.id});
+    await tap(dispatch, getState);
+  };
+}
+
 export function setLocatorTestElement(elementId) {
   return async (dispatch, getState) => {
     dispatch({type: SET_LOCATOR_TEST_ELEMENT, elementId});

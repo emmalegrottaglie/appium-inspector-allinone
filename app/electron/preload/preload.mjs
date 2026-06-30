@@ -54,6 +54,13 @@ window.electronIPC = {
     installDeps: (payload) => ipcRenderer.invoke('python:installDeps', payload),
   },
 
+  // Multi-language test runtimes (Ruby / Node / Oxygen) — detect + install deps
+  runtimes: {
+    detect: () => ipcRenderer.invoke('runtimes:detect'),
+    installRubyGems: () => ipcRenderer.invoke('runtimes:installRubyGems'),
+    installJsDeps: (workingDir) => ipcRenderer.invoke('runtimes:installJsDeps', {workingDir}),
+  },
+
   // Recorder: save generated code to a file (native Save dialog)
   codeExport: {
     saveAs: (payload) => ipcRenderer.invoke('code:saveAs', payload),
