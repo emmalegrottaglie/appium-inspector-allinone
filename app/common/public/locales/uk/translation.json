@@ -179,6 +179,8 @@
   "Kobiton Access Key": "Ключ доступу Kobiton",
   "serverTabHeasdpinWebDriverURL": "Адреса Web-драйвера HeadSpin",
   "sessionHeadspinWebDriverURLDescription": "Отримайте адресу з інтерфейсу HeadSpin або через HeadSpin API за допомогою маршруту автоматизації конфігурації",
+  "serverTabAstrofarmWebDriverURL": "URL-адреса веб-сервісу AstroFarm",
+  "sessionAstrofarmWebDriverURLDescription": "",
   "Remote Host": "Віддалений хост",
   "Remote Port": "Віддалений порт",
   "Remote Path": "Віддалений шлях",
@@ -326,5 +328,6 @@
   "Box Model": "Коробкова модель",
   "detachFromSession": "Відʼєднатися від сесії",
   "enterSessionID": "Введіть ідентифікатор сесії для приєднання вручну",
-  "refreshDiscoveredSessions": "Оновити відкриті сесії"
+  "refreshDiscoveredSessions": "Оновити відкриті сесії",
+  "toggleMultiDisplayMode": "Перемкнути багатоекранний режим"
 }

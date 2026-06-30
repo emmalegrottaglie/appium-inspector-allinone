@@ -179,6 +179,8 @@
   "Kobiton Access Key": "Kobiton 访问密钥",
   "serverTabHeasdpinWebDriverURL": "HeadSpin Web Driver URL",
   "sessionHeadspinWebDriverURLDescription": "使用自动配置路由从 HeadSpin UI 或 HeadSpin API获取 URL",
+  "serverTabAstrofarmWebDriverURL": "AstroFarm Web Driver URL",
+  "sessionAstrofarmWebDriverURLDescription": "Please retrieve the AstroFarm Appium URL (including your authentication token) from either the AstroFarm UI or API, and enter it here.",
   "Remote Host": "远程主机",
   "Remote Port": "远程端口",
   "Remote Path": "远程路径",
@@ -326,5 +328,6 @@
   "Box Model": "方框模型",
   "detachFromSession": "从会话中分离",
   "enterSessionID": "请输入会话ID以手动连接",
-  "refreshDiscoveredSessions": "刷新发现的会话"
+  "refreshDiscoveredSessions": "刷新发现的会话",
+  "toggleMultiDisplayMode": "Toggle Multi-Display Mode"
 }
