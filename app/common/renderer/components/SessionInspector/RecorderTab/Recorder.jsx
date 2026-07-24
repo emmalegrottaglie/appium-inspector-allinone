@@ -1,119 +1,65 @@
-import {
-  IconChevronDown,
-  IconDeviceFloppy,
-  IconEraser,
-  IconEyeCode,
-  IconFiles,
-  IconVideo,
-} from '@tabler/icons-react';
-import {Button, Card, Dropdown, Flex, Select, Space, Tooltip} from 'antd';
-import _ from 'lodash';
 import {useTranslation} from 'react-i18next';
 import {Refractor} from 'react-refractor';
 
-import {BUTTON} from '../../../constants/antd-types.js';
 import {CLIENT_FRAMEWORK_MAP} from '../../../lib/client-frameworks/map.js';
-import {copyToClipboard} from '../../../utils/other.js';
-import inspectorStyles from '../SessionInspector.module.css';
 import styles from './Recorder.module.css';
+import RecorderTabCard from './RecorderTabCard.jsx';
 
+/**
+ * Contents of the recorder tab.
+ */
 const Recorder = (props) => {
-  const {showBoilerplate, recordedActions, clientFramework} = props;
+  const {
+    showBoilerplate,
+    recordedActions,
+    clientFramework,
+    serverDetails,
+    sessionCaps,
+    setClientFramework,
+    toggleShowBoilerplate,
+    clearRecording,
+  } = props;
   const {t} = useTranslation();
 
+  const {serverUrl, serverUrlParts} = serverDetails;
   const ClientFrameworkClass = CLIENT_FRAMEWORK_MAP[clientFramework];
 
-  // Build code in any framework (defaults to the selected one), with its
-  // refractor language so the main process can pick a file extension.
-  const buildCodeFor = (fwId = clientFramework, withBoilerplate = showBoilerplate) => {
-    const {serverDetails, sessionCaps} = props;
-    const {serverUrl, serverUrlParts} = serverDetails;
-    const Cls = CLIENT_FRAMEWORK_MAP[fwId];
-    const framework = new Cls(serverUrl, serverUrlParts, sessionCaps);
-    framework.actions = recordedActions;
-    return {code: framework.getCodeString(withBoilerplate), language: Cls.refractorLang};
-  };
+  const framework = new ClientFrameworkClass(serverUrl, serverUrlParts, sessionCaps);
+  framework.actions = recordedActions;
+  const clientCode = framework.getCodeString(showBoilerplate);
 
-  const getCode = () => buildCodeFor().code;
-
+  // Save the recorded test to a file in any framework, via a native Save
+  // dialog. Always emits WITH boilerplate so the saved file is self-contained
+  // and runnable, regardless of the on-screen "Show Boilerplate" toggle.
   const saveAs = async (fwId) => {
-    // Always save WITH boilerplate so the file is self-contained and runnable
-    // (imports + driver setup + teardown), regardless of the preview toggle.
-    const {code, language} = buildCodeFor(fwId, true);
-    await window.electronIPC.codeExport.saveAs({content: code, language, defaultName: 'recorded-test'});
-  };
-
-  const actionBar = () => {
-    const {setClientFramework, toggleShowBoilerplate, clearRecording} = props;
-
-    return (
-      <Space size="middle">
-        {!!recordedActions.length && (
-          <Space.Compact>
-            <Tooltip title={t('Show/Hide Boilerplate Code')}>
-              <Button
-                onClick={toggleShowBoilerplate}
-                icon={<IconEyeCode size={18} />}
-                type={showBoilerplate ? BUTTON.PRIMARY : BUTTON.DEFAULT}
-              />
-            </Tooltip>
-            <Tooltip title={t('Copy code to clipboard')}>
-              <Button icon={<IconFiles size={18} />} onClick={() => copyToClipboard(getCode())} />
-            </Tooltip>
-            {window.electronIPC?.codeExport && (
-              <Tooltip title={t('Save test as a file')}>
-                <Dropdown.Button
-                  icon={<IconChevronDown size={16} />}
-                  onClick={() => saveAs(clientFramework)}
-                  menu={{
-                    items: _.map(CLIENT_FRAMEWORK_MAP, (fwClass, fwId) => ({
-                      key: fwId,
-                      label: t('Save as {{name}}', {name: fwClass.readableName}),
-                    })),
-                    onClick: ({key}) => saveAs(key),
-                  }}
-                >
-                  <IconDeviceFloppy size={18} />
-                </Dropdown.Button>
-              </Tooltip>
-            )}
-            <Tooltip title={t('Clear Actions')}>
-              <Button icon={<IconEraser size={18} />} onClick={clearRecording} />
-            </Tooltip>
-          </Space.Compact>
-        )}
-        <Select
-          defaultValue={clientFramework}
-          value={clientFramework}
-          onChange={setClientFramework}
-          className={inspectorStyles.frameworkDropdown}
-          options={_.map(CLIENT_FRAMEWORK_MAP, (fwClass, fwId) => ({
-            value: fwId,
-            label: fwClass.readableName,
-          }))}
-        />
-      </Space>
-    );
+    const Cls = CLIENT_FRAMEWORK_MAP[fwId];
+    const fw = new Cls(serverUrl, serverUrlParts, sessionCaps);
+    fw.actions = recordedActions;
+    await window.electronIPC.codeExport.saveAs({
+      content: fw.getCodeString(true),
+      language: Cls.refractorLang,
+      defaultName: 'recorded-test',
+    });
   };
 
   return (
-    <Card
-      title={
-        <Flex gap={4} align="center">
-          <IconVideo size={18} />
-          {t('Recorder')}
-        </Flex>
-      }
-      className={inspectorStyles.interactionTabCard}
-      extra={actionBar()}
+    <RecorderTabCard
+      clientFramework={clientFramework}
+      clientCode={clientCode}
+      recordedActions={recordedActions}
+      setClientFramework={setClientFramework}
+      showBoilerplate={showBoilerplate}
+      toggleShowBoilerplate={toggleShowBoilerplate}
+      clearRecording={clearRecording}
+      saveAs={saveAs}
     >
       {!recordedActions.length && (
         <div className={styles.noRecordedActions}>{t('enableRecordingAndPerformActions')}</div>
       )}
       {!!recordedActions.length && (
-        <Refractor language={ClientFrameworkClass.refractorLang} value={getCode()} />
+        <Refractor language={ClientFrameworkClass.refractorLang} value={clientCode} />
       )}
-    </Card>
+    </RecorderTabCard>
   );
 };
 

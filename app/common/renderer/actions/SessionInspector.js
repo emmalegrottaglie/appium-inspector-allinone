@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import sanitize from 'sanitize-filename';
 
 import {SAVED_CLIENT_FRAMEWORK, SET_SAVED_GESTURES} from '../../shared/setting-defs.js';
@@ -7,6 +6,7 @@ import i18n from '../i18next.js';
 import InspectorDriver from '../lib/appium/inspector-driver.js';
 import {CLIENT_FRAMEWORK_MAP} from '../lib/client-frameworks/map.js';
 import {getSetting, setSetting} from '../polyfills.js';
+import {debounce, isEmpty, omit} from '../utils/common.js';
 import {downloadFile, readTextFromUploadedFiles} from '../utils/file-handling.js';
 import {parseGestureFileContents} from '../utils/gesturefile-parsing.js';
 import {getSuggestedLocators} from '../utils/locator-generation/common.js';
@@ -50,18 +50,18 @@ export const SET_CLIENT_FRAMEWORK = 'SET_CLIENT_FRAMEWORK';
 export const RECORD_ACTION = 'RECORD_ACTION';
 export const SET_SHOW_BOILERPLATE = 'SET_SHOW_BOILERPLATE';
 
-export const SHOW_LOCATOR_TEST_MODAL = 'SHOW_LOCATOR_TEST_MODAL';
-export const HIDE_LOCATOR_TEST_MODAL = 'HIDE_LOCATOR_TEST_MODAL';
+export const SHOW_LOCATOR_SEARCH_MODAL = 'SHOW_LOCATOR_SEARCH_MODAL';
+export const HIDE_LOCATOR_SEARCH_MODAL = 'HIDE_LOCATOR_SEARCH_MODAL';
 export const SHOW_SIRI_COMMAND_MODAL = 'SHOW_SIRI_COMMAND_MODAL';
 export const HIDE_SIRI_COMMAND_MODAL = 'HIDE_SIRI_COMMAND_MODAL';
 export const SET_SIRI_COMMAND_VALUE = 'SET_SIRI_COMMAND_VALUE';
-export const SET_LOCATOR_TEST_STRATEGY = 'SET_LOCATOR_TEST_STRATEGY';
-export const SET_LOCATOR_TEST_VALUE = 'SET_LOCATOR_TEST_VALUE';
+export const SET_LOCATOR_SEARCH_STRATEGY = 'SET_LOCATOR_SEARCH_STRATEGY';
+export const SET_LOCATOR_SEARCH_VALUE = 'SET_LOCATOR_SEARCH_VALUE';
 export const SEARCHING_FOR_ELEMENTS = 'SEARCHING_FOR_ELEMENTS';
 export const SEARCHING_FOR_ELEMENTS_COMPLETED = 'SEARCHING_FOR_ELEMENTS_COMPLETED';
 export const GET_FIND_ELEMENTS_TIMES = 'GET_FIND_ELEMENTS_TIMES';
 export const GET_FIND_ELEMENTS_TIMES_COMPLETED = 'GET_FIND_ELEMENTS_TIMES_COMPLETED';
-export const SET_LOCATOR_TEST_ELEMENT = 'SET_LOCATOR_TEST_ELEMENT';
+export const SELECT_LOCATED_ELEMENT = 'SELECT_LOCATED_ELEMENT';
 export const FINDING_ELEMENT_IN_SOURCE = 'FINDING_ELEMENT_IN_SOURCE';
 export const FINDING_ELEMENT_IN_SOURCE_COMPLETED = 'FINDING_ELEMENT_IN_SOURCE_COMPLETED';
 export const CLEAR_SEARCH_RESULTS = 'CLEAR_SEARCH_RESULTS';
@@ -121,7 +121,7 @@ const KEEP_ALIVE_PING_INTERVAL = 20 * 1000;
 const NO_NEW_COMMAND_LIMIT = 24 * 60 * 60 * 1000; // Set timeout to 24 hours
 
 // A debounced function that calls findElement and gets info about the element
-const findElement = _.debounce(async function (strategyMap, dispatch, getState, path) {
+const findElement = debounce(async function (strategyMap, dispatch, getState, path) {
   for (let [strategy, selector] of strategyMap) {
     // Get the information about the element
     const action = callClientMethod({
@@ -393,15 +393,15 @@ export function storeSessionSettings(updatedSessionSettings = null) {
   };
 }
 
-export function showLocatorTestModal() {
+export function showLocatorSearchModal() {
   return (dispatch) => {
-    dispatch({type: SHOW_LOCATOR_TEST_MODAL});
+    dispatch({type: SHOW_LOCATOR_SEARCH_MODAL});
   };
 }
 
-export function hideLocatorTestModal() {
+export function hideLocatorSearchModal() {
   return (dispatch) => {
-    dispatch({type: HIDE_LOCATOR_TEST_MODAL});
+    dispatch({type: HIDE_LOCATOR_SEARCH_MODAL});
   };
 }
 
@@ -455,15 +455,15 @@ export function setCurrentDisplayId(displayId) {
   };
 }
 
-export function setLocatorTestValue(locatorTestValue) {
+export function setLocatorSearchValue(locatorSearchValue) {
   return (dispatch) => {
-    dispatch({type: SET_LOCATOR_TEST_VALUE, locatorTestValue});
+    dispatch({type: SET_LOCATOR_SEARCH_VALUE, locatorSearchValue});
   };
 }
 
-export function setLocatorTestStrategy(locatorTestStrategy) {
+export function setLocatorSearchStrategy(locatorSearchStrategy) {
   return (dispatch) => {
-    dispatch({type: SET_LOCATOR_TEST_STRATEGY, locatorTestStrategy});
+    dispatch({type: SET_LOCATOR_SEARCH_STRATEGY, locatorSearchStrategy});
   };
 }
 
@@ -510,7 +510,7 @@ export function getFindElementsTimes(findDataSource) {
 
       dispatch({
         type: GET_FIND_ELEMENTS_TIMES_COMPLETED,
-        findElementsExecutionTimes: _.sortBy(findElementsExecutionTimes, ['time']),
+        findElementsExecutionTimes: [...findElementsExecutionTimes].sort((a, b) => a.time - b.time),
       });
     } catch (error) {
       dispatch({type: GET_FIND_ELEMENTS_TIMES_COMPLETED});
@@ -614,9 +614,9 @@ export function scrollToElement(elementLocatorsData) {
   };
 }
 
-export function setLocatorTestElement(elementId) {
+export function selectLocatedElement(elementId) {
   return async (dispatch, getState) => {
-    dispatch({type: SET_LOCATOR_TEST_ELEMENT, elementId});
+    dispatch({type: SELECT_LOCATED_ELEMENT, elementId});
     dispatch({type: CLEAR_SEARCHED_FOR_ELEMENT_BOUNDS});
     if (elementId) {
       try {
@@ -641,7 +641,7 @@ export function setLocatorTestElement(elementId) {
  * Given an element ID found through search, and its bounds,
  * attempt to find and select this element in the source tree
  */
-export function selectLocatedElement(sourceJSON, sourceXML, bounds, id) {
+export function findLocatedElementInSource(sourceJSON, sourceXML, bounds, id) {
   const UPPER_FILTER_LIMIT = 10;
 
   // Parse the source tree and find all nodes whose bounds match the expected bounds
@@ -1026,7 +1026,7 @@ export function importGestureFiles(fileList) {
     }
     dispatch({type: GESTURE_UPLOAD_DONE});
 
-    if (!_.isEmpty(invalidGestureFiles)) {
+    if (!isEmpty(invalidGestureFiles)) {
       notification.error({
         title: i18n.t('unableToImportGestureFiles', {fileNames: invalidGestureFiles.join(', ')}),
         duration: 0,
@@ -1038,7 +1038,7 @@ export function importGestureFiles(fileList) {
 export function exportSavedGesture(gestureJSON) {
   return async () => {
     const cleanedName = `gesture-${gestureJSON.name}`;
-    const gestureToExport = _.omit(gestureJSON, ['id', 'date']);
+    const gestureToExport = omit(gestureJSON, ['id', 'date']);
     const href = `data:text/json;charset=utf-8,${encodeURIComponent(
       JSON.stringify(gestureToExport, null, 2),
     )}`;
@@ -1174,5 +1174,5 @@ function parseAndValidateGestureFileString(gestureFileString) {
   if (gestureJSON === null) {
     return null;
   }
-  return _.omit(gestureJSON, ['id', 'date']);
+  return omit(gestureJSON, ['id', 'date']);
 }

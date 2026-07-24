@@ -1,38 +1,26 @@
-import {IconTerminal} from '@tabler/icons-react';
-import {Card, Flex, Input, Modal, Space, Typography} from 'antd';
-import _ from 'lodash';
 import {useEffect, useRef, useState} from 'react';
-import {useTranslation} from 'react-i18next';
 
 import {
   adjustParamValueType,
   transformCommandsMap,
   transformExecMethodsMap,
 } from '../../../utils/commands-tab.js';
-import inspectorStyles from '../SessionInspector.module.css';
-import CommandResultModal from './CommandResultModal.jsx';
+import {isEmpty, isPlainObject} from '../../../utils/common.js';
+import CommandParametersModal from './CommandParametersModal.jsx';
+import CommandResultModal from './CommandResult/CommandResultModal.jsx';
 import styles from './Commands.module.css';
-import MethodMapCommandsList from './MethodMapCommandsList.jsx';
-import StaticCommandsList from './StaticCommandsList.jsx';
+import CommandsTabCard from './CommandsTabCard.jsx';
+import MethodMapCommandsTabs from './MethodMapCommandsTabs.jsx';
+import StaticCommandsContent from './StaticCommandsContent.jsx';
 
 const COMMAND_EXECUTE_SCRIPT = 'executeScript';
 const COMMAND_UPDATE_SETTINGS = 'updateSettings';
 
-const formatParamInputLabel = (param) => {
-  const monoName = <span className={inspectorStyles.monoFont}>{param.name}</span>;
-  if (param.required) {
-    return (
-      <>
-        <Typography.Text type="danger">*</Typography.Text>&nbsp;{monoName}
-      </>
-    );
-  }
-  return monoName;
-};
-
+/**
+ * Contents of the commands tab.
+ */
 const Commands = (props) => {
   const {applyClientMethod, getSupportedSessionMethods, storeSessionSettings} = props;
-  const {t} = useTranslation();
 
   const [hasMethodsMap, setHasMethodsMap] = useState(null);
   const [driverCommands, setDriverCommands] = useState(null);
@@ -45,7 +33,7 @@ const Commands = (props) => {
 
   const startCommand = (commandDetails) => {
     setCurCommandDetails(commandDetails);
-    if (_.isEmpty(commandDetails.details.params)) {
+    if (isEmpty(commandDetails.details.params)) {
       prepareAndRunCommand(commandDetails);
     }
   };
@@ -58,8 +46,9 @@ const Commands = (props) => {
     // the parameters array needs to be turned into an object,
     // and the command name added as a separate parameter.
     if (isExecute) {
-      const cmdParamNames = _.map(cmdParams, 'name');
-      const mappedCmdParams = _.zipObject(cmdParamNames, adjustedCmdParams);
+      const mappedCmdParams = !isEmpty(cmdParams)
+        ? Object.fromEntries(cmdParams.map((p, i) => [p.name, adjustedCmdParams[i]]))
+        : {};
       adjustedCmdParams = [cmdName, mappedCmdParams];
     }
 
@@ -68,9 +57,9 @@ const Commands = (props) => {
     // but if the script doesn't use any arguments, we allow the user to omit it.
     // So we can have 5 cases for 'args': undefined, {}, [], {...}, [{...}]
     if (adjustedCmdName === COMMAND_EXECUTE_SCRIPT) {
-      if (_.isEmpty(adjustedCmdParams[1])) {
+      if (isEmpty(adjustedCmdParams[1])) {
         adjustedCmdParams[1] = [];
-      } else if (_.isPlainObject(adjustedCmdParams[1])) {
+      } else if (isPlainObject(adjustedCmdParams[1])) {
         adjustedCmdParams[1] = [adjustedCmdParams[1]];
       }
     }
@@ -112,47 +101,32 @@ const Commands = (props) => {
   useEffect(() => {
     (async () => {
       const {commands, executeMethods} = await getSupportedSessionMethods();
-      setHasMethodsMap(!(_.isEmpty(commands) && _.isEmpty(executeMethods)));
+      setHasMethodsMap(!(isEmpty(commands) && isEmpty(executeMethods)));
       setDriverCommands(transformCommandsMap(commands));
       setDriverExecuteMethods(transformExecMethodsMap(executeMethods));
     })();
   }, [getSupportedSessionMethods]);
 
   return (
-    <Card
-      title={
-        <Flex gap={4} align="center">
-          <IconTerminal size={18} />
-          {t('Execute Commands')}
-        </Flex>
-      }
-      className={inspectorStyles.interactionTabCard}
-    >
+    <CommandsTabCard>
       <div className={styles.commandsContainer}>
-        {hasMethodsMap === false && <StaticCommandsList startCommand={startCommand} />}
+        {/* do not use ternary operator, as that will show the static list
+            while getSupportedSessionMethods is running */}
+        {hasMethodsMap === false && <StaticCommandsContent startCommand={startCommand} />}
         {hasMethodsMap && (
-          <MethodMapCommandsList
+          <MethodMapCommandsTabs
             driverCommands={driverCommands}
             driverExecuteMethods={driverExecuteMethods}
             startCommand={startCommand}
           />
         )}
         {!!curCommandDetails && (
-          <Modal
-            title={t('enterMethodParameters', {methodName: curCommandDetails.name})}
-            okText={t('Execute Command')}
-            open={!_.isEmpty(curCommandDetails.details.params)}
-            onOk={() => prepareAndRunCommand(curCommandDetails)}
-            onCancel={() => clearCurrentCommand()}
-            footer={(_, {OkBtn}) => <OkBtn />}
-          >
-            {_.map(curCommandDetails.details.params, (param, index) => (
-              <Space.Compact block key={index} className={styles.commandArgInputRow}>
-                <Space.Addon>{formatParamInputLabel(param)}</Space.Addon>
-                <Input onChange={(e) => (curCommandParamValsRef.current[index] = e.target.value)} />
-              </Space.Compact>
-            ))}
-          </Modal>
+          <CommandParametersModal
+            curCommandDetails={curCommandDetails}
+            curCommandParamValsRef={curCommandParamValsRef}
+            prepareAndRunCommand={prepareAndRunCommand}
+            clearCurrentCommand={clearCurrentCommand}
+          />
         )}
         {commandResult !== undefined && (
           <CommandResultModal
@@ -162,7 +136,7 @@ const Commands = (props) => {
           />
         )}
       </div>
-    </Card>
+    </CommandsTabCard>
   );
 };
 
