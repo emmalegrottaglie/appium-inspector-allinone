@@ -181,6 +181,15 @@ Notes that bite if you forget them:
   `.rb`→`ruby`, `.js`→`node` (WebdriverIO) or `oxygen`. Python & Robot produce a
   parsed pass/fail summary (JUnit/xUnit → `fast-xml-parser`); Ruby/JS are
   exit-code only. Ruby/Node/Oxygen are **not bundled** — detected on PATH.
+- **Tests panel layout (`PythonPanel.jsx`):** two internal antd sub-tabs —
+  **Tests** (a two-column `testsLayout`: files+editor on the left, run controls +
+  result banner + `outputLog` on the right) and **Environment** (venv setup +
+  the Languages & runtimes card). The **result banner** logic is intentional:
+  structured (pytest/robot) passes only if `failures+errors===0` AND the process
+  exited cleanly AND at least one test ran (`0 tests` → **NO TESTS**, not green);
+  Ruby/JS pass iff exit code 0 (**PASSED / FAILED (exit N)**). The `run` object
+  shape comes from `use-python-tests.jsx` (`{status:'running'|'done'|'error',
+  code?, reason?}`).
 - **"Scroll to & tap"** (`scrollToElement` thunk in `actions/SessionInspector.js`)
   builds a `UiScrollable(...).scrollIntoView(<stable UiSelector>)`, finds it live
   (scrolls the device), then taps it through the normal `applyClientMethod`
