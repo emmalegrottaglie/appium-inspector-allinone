@@ -48,8 +48,30 @@ scratch and are ignored via `.git/info/exclude` (not committed).
   editing them causes merge conflicts on every upstream pull. Fork CI noise
   (e.g. Crowdin needing secrets) is handled by disabling Actions in the fork's
   GitHub Settings, not in code.
-- **Verify before you commit:** `npm run build:electron` must pass, and
-  `npx eslint <changed files>` must be error-free (warnings are OK).
+- **No shortcuts, no faking it — make it actually work.** Do not hardcode values
+  to dodge a bug, stub/mock away real behavior, swallow errors to make a red
+  state look green, disable validation or a lint/type check to get past it, leave
+  a placeholder claiming success, or commit without building. If something
+  doesn't work, find the real cause and fix it (or say plainly that it doesn't
+  work and why). A build that "passes" because a check was removed is worse than
+  an honest failure. When you hit a wall, prefer the correct fix even if it's
+  more work — this codebase was debugged the hard way (see §9); keep it honest.
+- **Use the installed tooling/skills — don't reinvent or eyeball it.** This repo
+  is set up with agent skills; use them as the workflow rather than doing things
+  by hand or by guess:
+  - **`/code-review`** — the review skill. It is **user-invoked only** (an agent
+    cannot call it via the Skill tool; it's reserved for the human typing
+    `/code-review`). So: after a change, *ask the user to run `/code-review`* and
+    then address what it finds. Do a careful manual self-review of your own diff
+    regardless.
+  - **`verify` / `run`** — launch the real app and confirm the change behaves,
+    instead of assuming it works from the code alone.
+  - **`simplify`** — for reuse/cleanup passes after a feature lands.
+  Prefer these over ad-hoc greps/manual reasoning when a skill covers the task.
+- **Verify before you commit** (the standard loop): `npm run build:electron`
+  passes → `npx eslint <changed files>` is error-free (warnings OK) →
+  self-review the diff (and ask the user to run `/code-review`) → **`verify`/`run`**
+  the app → then commit.
 - **Only commit/push when asked.** Commit messages end with the
   `Co-Authored-By: Claude ...` trailer.
 

@@ -7,7 +7,7 @@ import {
   IconRefresh,
   IconWand,
 } from '@tabler/icons-react';
-import {Alert, Button, Dropdown, Input, List, Space, Tag, Typography} from 'antd';
+import {Alert, Button, Dropdown, Input, List, Space, Tabs, Tag, Typography} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
@@ -164,6 +164,7 @@ const PythonPanel = () => {
     usePythonTests();
   const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
   const [keyword, setKeyword] = useState('');
+  const [panelTab, setPanelTab] = useState('tests'); // 'environment' | 'tests'
 
   // In-app editor state
   const [openFile, setOpenFile] = useState(null); // relative path currently open
@@ -272,297 +273,363 @@ const PythonPanel = () => {
     }[openLang];
   const isPyFile = openLang === 'python';
 
-  return (
-    <div className={styles.panel}>
-      <Space direction="vertical" size="middle" className={styles.fill}>
-        <section className={styles.card}>
-          <Space className={styles.cardHeader}>
-            <Text strong>{t('Environment')}</Text>
-            <Button size="small" icon={<IconRefresh size={14} />} onClick={refresh} disabled={settingUp} />
-          </Space>
-          <EnvStatus status={status} />
-          <Space className={styles.actions}>
-            <Button
-              type="primary"
-              onClick={setup}
-              loading={settingUp}
-              disabled={status != null && status.python && !status.python.found}
-            >
-              {ready ? t('Reinstall dependencies') : t('Set up environment')}
-            </Button>
-            {phase === 'done' && <Text type="success">{t('Setup complete')}</Text>}
-            {phase === 'error' && <Text type="danger">{t('Setup failed — see log')}</Text>}
-          </Space>
-          {confirm && (
-            <Alert
-              type="warning"
-              showIcon
-              className={styles.confirm}
-              message={`Install third-party package "${confirm.package}"?`}
-              action={
-                <Space>
-                  <Button size="small" danger onClick={() => {
+  // Overall run result — structured (pytest/robot JUnit summary) OR exit-code
+  // (ruby/js). This gives Ruby & JS a clear PASS/FAIL state.
+  const finished = !!run && run.status !== 'running';
+  const structured = result?.totals;
+  const structuredTotal = structured ? result.totals.tests || 0 : 0;
+  const structuredFailed = structured
+    ? (result.totals.failures || 0) + (result.totals.errors || 0)
+    : 0;
+  let resultBanner = null;
+  if (running) {
+    resultBanner = <Tag color="processing">{t('RUNNING…')}</Tag>;
+  } else if (run?.reason === 'env_not_ready') {
+    resultBanner = <Tag color="error">{t('ENV NOT READY')}</Tag>;
+  } else if (finished) {
+    if (structured && structuredTotal === 0) {
+      // A report with no test cases (e.g. a -k filter that matched nothing) is
+      // not a pass — pytest exits 5 here, so don't render it green.
+      resultBanner = <Tag color="warning">{t('NO TESTS')}</Tag>;
+    } else {
+      // Structured (pytest/robot): pass only if the report is clean AND the
+      // process exited OK — a non-zero exit with 0 reported failures (e.g. a
+      // fixture/teardown crash) is still a failure. Exit-code langs (ruby/js):
+      // pass iff the process exited 0.
+      const passed = structured
+        ? structuredFailed === 0 && run.status !== 'error'
+        : run.status === 'done';
+      resultBanner = passed ? (
+        <Tag color="success">{t('PASSED')}</Tag>
+      ) : (
+        <Tag color="error">
+          {t('FAILED')}
+          {!structured && run.code != null ? ` (exit ${run.code})` : ''}
+        </Tag>
+      );
+    }
+  }
+
+  const environmentPane = (
+    <Space direction="vertical" size="middle" className={styles.fill}>
+      <section className={styles.card}>
+        <Space className={styles.cardHeader}>
+          <Text strong>{t('Environment')}</Text>
+          <Button size="small" icon={<IconRefresh size={14} />} onClick={refresh} disabled={settingUp} />
+        </Space>
+        <EnvStatus status={status} />
+        <Space className={styles.actions}>
+          <Button
+            type="primary"
+            onClick={setup}
+            loading={settingUp}
+            disabled={status != null && status.python && !status.python.found}
+          >
+            {ready ? t('Reinstall dependencies') : t('Set up environment')}
+          </Button>
+          {phase === 'done' && <Text type="success">{t('Setup complete')}</Text>}
+          {phase === 'error' && <Text type="danger">{t('Setup failed — see log')}</Text>}
+        </Space>
+        {confirm && (
+          <Alert
+            type="warning"
+            showIcon
+            className={styles.confirm}
+            message={`Install third-party package "${confirm.package}"?`}
+            action={
+              <Space>
+                <Button
+                  size="small"
+                  danger
+                  onClick={() => {
                     const pkg = confirm.package;
                     clearConfirm();
                     installPackage(pkg);
-                  }}>
-                    {t('Install')}
-                  </Button>
-                  <Button size="small" onClick={clearConfirm}>
-                    {t('Cancel')}
-                  </Button>
-                </Space>
-              }
-            />
-          )}
-          {(settingUp || log.length > 0) && (
-            <pre className={styles.log} ref={envLogRef}>
-              {log.map((l) => l.chunk).join('')}
-            </pre>
-          )}
-        </section>
-
-        <section className={styles.card}>
-          <Space className={styles.cardHeader}>
-            <Text strong>{t('Languages & runtimes')}</Text>
-          </Space>
-          <Text type="secondary" className={styles.hint}>
-            {t('Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).')}
-          </Text>
-
-          <Space wrap>
-            <Tag color={status?.robotReady ? 'success' : 'default'}>Robot Framework</Tag>
-            {status?.robotReady ? (
-              <Text type="success">{t('ready')} (.robot)</Text>
-            ) : (
-              <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
-                {t('Add Robot Framework')}
-              </Button>
-            )}
-            {!status?.venv && <Text type="secondary">{t('set up the venv first')}</Text>}
-          </Space>
-
-          <Space wrap>
-            <Tag color={runtimes?.ruby?.found ? 'success' : 'default'}>Ruby</Tag>
-            <Text type="secondary">
-              {runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}
-            </Text>
-            <Button
-              size="small"
-              onClick={installRubyGems}
-              loading={rtBusy && rtOp?.kind === 'ruby'}
-              disabled={!runtimes?.ruby?.found}
-            >
-              {t('Install appium_lib_core')}
-            </Button>
-          </Space>
-
-          <Space wrap>
-            <Tag color={runtimes?.node?.found ? 'success' : 'default'}>Node / WebdriverIO</Tag>
-            <Text type="secondary">
-              {runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}
-            </Text>
-            <Button
-              size="small"
-              onClick={() => installJsDeps(workingDir)}
-              loading={rtBusy && rtOp?.kind === 'js'}
-              disabled={!runtimes?.node?.found || !workingDir}
-            >
-              {t('Install WebdriverIO')}
-            </Button>
-            {runtimes?.oxygen?.found && <Tag color="success">oxygen CLI</Tag>}
-            {!workingDir && <Text type="secondary">{t('choose a working dir first')}</Text>}
-          </Space>
-
-          {(rtBusy || rtLog.length > 0) && (
-            <pre className={styles.log} ref={rtLogRef}>
-              {rtLog.map((l) => l.chunk).join('')}
-            </pre>
-          )}
-        </section>
-
-        <section className={styles.card}>
-          <Space className={styles.cardHeader}>
-            <Text strong>{t('Tests')}</Text>
-          </Space>
-          <Space wrap>
-            <Button icon={<IconFolderOpen size={16} />} onClick={pickDir}>
-              {t('Choose working directory')}
-            </Button>
-            {workingDir && (
-              <Button size="small" icon={<IconRefresh size={14} />} onClick={refreshFiles} />
-            )}
-          </Space>
-          {workingDir && (
-            <Text type="secondary" className={styles.dir}>
-              {workingDir}
-            </Text>
-          )}
-          {workingDir && (
-            <>
-              <List
-                size="small"
-                header={
-                  <Space className={styles.cardHeader}>
-                    <Text type="secondary">
-                      {files.length} {t('test file(s)')}
-                    </Text>
-                  </Space>
-                }
-                className={styles.files}
-                dataSource={files}
-                locale={{emptyText: t('No test files found (.py, .robot, .rb, .js)')}}
-                renderItem={(f) => (
-                  <List.Item
-                    className={`${styles.fileItem} ${openFile === f ? styles.fileActive : ''}`}
-                    onClick={() => openInEditor(f)}
-                  >
-                    {f}
-                  </List.Item>
-                )}
-              />
-              <Space.Compact className={styles.row}>
-                <Input
-                  placeholder={t('new-test-name.py')}
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  onPressEnter={startNewFile}
-                  spellCheck={false}
-                />
-                <Button icon={<IconFilePlus size={16} />} onClick={startNewFile}>
-                  {t('New test')}
+                  }}
+                >
+                  {t('Install')}
                 </Button>
-              </Space.Compact>
-            </>
-          )}
-
-          {openFile && (
-            <div className={styles.editor}>
-              <Space className={styles.cardHeader}>
-                <Text strong className={styles.fileItem}>
-                  {openFile}
-                  {dirty ? ' •' : ''}
-                </Text>
-                <Space>
-                  <Tag>{openLang}</Tag>
-                  {isPyFile && (
-                    <Dropdown.Button
-                      size="small"
-                      icon={<IconChevronDown size={14} />}
-                      onClick={() => formatEditor()}
-                      menu={{
-                        items: [
-                          {
-                            key: 'wait',
-                            label: t('Format + implicit wait (10s)'),
-                          },
-                        ],
-                        onClick: ({key}) => {
-                          if (key === 'wait') {
-                            formatEditor({implicitWait: true});
-                          }
-                        },
-                      }}
-                    >
-                      <IconWand size={14} /> {t('Format')}
-                    </Dropdown.Button>
-                  )}
-                  <Button
-                    size="small"
-                    icon={<IconDeviceFloppy size={14} />}
-                    onClick={saveEditor}
-                    loading={saving}
-                    disabled={!dirty}
-                  >
-                    {t('Save')}
-                  </Button>
-                  <Button
-                    size="small"
-                    type="primary"
-                    icon={<IconPlayerPlay size={14} />}
-                    onClick={runOpenFile}
-                    loading={running}
-                    disabled={!canRunOpen}
-                  >
-                    {t('Save & run')}
-                  </Button>
-                </Space>
+                <Button size="small" onClick={clearConfirm}>
+                  {t('Cancel')}
+                </Button>
               </Space>
-              <TextArea
-                value={editorText}
-                onChange={(e) => {
-                  setEditorText(e.target.value);
-                  setDirty(true);
-                }}
-                autoSize={{minRows: 10, maxRows: 24}}
-                spellCheck={false}
-                className={styles.code}
-              />
-              <Text type="secondary" className={styles.hint}>
-                {isPyFile
-                  ? t('Format wraps recorded steps with imports, a test function, and setup/teardown.')
-                  : t('Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.', {lang: openLang})}
-              </Text>
-            </div>
-          )}
+            }
+          />
+        )}
+        {(settingUp || log.length > 0) && (
+          <pre className={styles.log} ref={envLogRef}>
+            {log.map((l) => l.chunk).join('')}
+          </pre>
+        )}
+      </section>
 
-          <Space.Compact className={styles.row}>
-            <Input
-              addonBefore={t('Keyword (-k)')}
-              placeholder={t('optional pytest -k filter')}
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              disabled={!workingDir || running}
-              spellCheck={false}
-            />
-            <Button
-              type="primary"
-              icon={<IconPlayerPlay size={16} />}
-              onClick={() => runTests({keyword: keyword.trim() || null})}
-              loading={running}
-              disabled={!ready || !workingDir}
-            >
-              {t('Run all tests')}
+      <section className={styles.card}>
+        <Space className={styles.cardHeader}>
+          <Text strong>{t('Languages & runtimes')}</Text>
+        </Space>
+        <Text type="secondary" className={styles.hint}>
+          {t('Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).')}
+        </Text>
+
+        <Space wrap>
+          <Tag color={status?.robotReady ? 'success' : 'default'}>Robot Framework</Tag>
+          {status?.robotReady ? (
+            <Text type="success">{t('ready')} (.robot)</Text>
+          ) : (
+            <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
+              {t('Add Robot Framework')}
             </Button>
-          </Space.Compact>
-          {!ready && workingDir && (
-            <Text type="warning">{t('Set up the environment before running tests.')}</Text>
           )}
-          {run?.reason === 'env_not_ready' && (
-            <Text type="danger">{t('Environment is not ready.')}</Text>
-          )}
+          {!status?.venv && <Text type="secondary">{t('set up the venv first')}</Text>}
+        </Space>
 
-          {result?.totals && (
-            <Space wrap className={styles.totals}>
+        <Space wrap>
+          <Tag color={runtimes?.ruby?.found ? 'success' : 'default'}>Ruby</Tag>
+          <Text type="secondary">
+            {runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}
+          </Text>
+          <Button
+            size="small"
+            onClick={installRubyGems}
+            loading={rtBusy && rtOp?.kind === 'ruby'}
+            disabled={!runtimes?.ruby?.found}
+          >
+            {t('Install appium_lib_core')}
+          </Button>
+        </Space>
+
+        <Space wrap>
+          <Tag color={runtimes?.node?.found ? 'success' : 'default'}>Node / WebdriverIO</Tag>
+          <Text type="secondary">
+            {runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}
+          </Text>
+          <Button
+            size="small"
+            onClick={() => installJsDeps(workingDir)}
+            loading={rtBusy && rtOp?.kind === 'js'}
+            disabled={!runtimes?.node?.found || !workingDir}
+          >
+            {t('Install WebdriverIO')}
+          </Button>
+          {runtimes?.oxygen?.found && <Tag color="success">oxygen CLI</Tag>}
+          {!workingDir && <Text type="secondary">{t('choose a working dir first')}</Text>}
+        </Space>
+
+        {(rtBusy || rtLog.length > 0) && (
+          <pre className={styles.log} ref={rtLogRef}>
+            {rtLog.map((l) => l.chunk).join('')}
+          </pre>
+        )}
+      </section>
+    </Space>
+  );
+
+  const testsPane = (
+    <div className={styles.testsLayout}>
+      {/* LEFT column: working dir + file list + editor */}
+      <div className={styles.testsCol}>
+        <Space wrap>
+          <Button icon={<IconFolderOpen size={16} />} onClick={pickDir}>
+            {t('Choose working directory')}
+          </Button>
+          {workingDir && (
+            <Button size="small" icon={<IconRefresh size={14} />} onClick={refreshFiles} />
+          )}
+        </Space>
+        {workingDir ? (
+          <Text type="secondary" className={styles.dir}>
+            {workingDir}
+          </Text>
+        ) : (
+          <Text type="secondary">
+            {t('Choose a working directory to see and run your tests.')}
+          </Text>
+        )}
+        {workingDir && (
+          <>
+            <List
+              size="small"
+              header={
+                <Text type="secondary">
+                  {files.length} {t('test file(s)')}
+                </Text>
+              }
+              className={styles.files}
+              dataSource={files}
+              locale={{emptyText: t('No test files found (.py, .robot, .rb, .js)')}}
+              renderItem={(f) => (
+                <List.Item
+                  className={`${styles.fileItem} ${openFile === f ? styles.fileActive : ''}`}
+                  onClick={() => openInEditor(f)}
+                >
+                  {f}
+                </List.Item>
+              )}
+            />
+            <Space.Compact className={styles.row}>
+              <Input
+                placeholder={t('new-test-name.py')}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onPressEnter={startNewFile}
+                spellCheck={false}
+              />
+              <Button icon={<IconFilePlus size={16} />} onClick={startNewFile}>
+                {t('New test')}
+              </Button>
+            </Space.Compact>
+          </>
+        )}
+
+        {openFile && (
+          <div className={styles.editor}>
+            <Space className={styles.cardHeader}>
+              <Text strong className={styles.fileItem}>
+                {openFile}
+                {dirty ? ' •' : ''}
+              </Text>
+              <Space>
+                <Tag>{openLang}</Tag>
+                {isPyFile && (
+                  <Dropdown.Button
+                    size="small"
+                    icon={<IconChevronDown size={14} />}
+                    onClick={() => formatEditor()}
+                    menu={{
+                      items: [{key: 'wait', label: t('Format + implicit wait (10s)')}],
+                      onClick: ({key}) => {
+                        if (key === 'wait') {
+                          formatEditor({implicitWait: true});
+                        }
+                      },
+                    }}
+                  >
+                    <IconWand size={14} /> {t('Format')}
+                  </Dropdown.Button>
+                )}
+                <Button
+                  size="small"
+                  icon={<IconDeviceFloppy size={14} />}
+                  onClick={saveEditor}
+                  loading={saving}
+                  disabled={!dirty}
+                >
+                  {t('Save')}
+                </Button>
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<IconPlayerPlay size={14} />}
+                  onClick={runOpenFile}
+                  loading={running}
+                  disabled={!canRunOpen}
+                >
+                  {t('Save & run')}
+                </Button>
+              </Space>
+            </Space>
+            <TextArea
+              value={editorText}
+              onChange={(e) => {
+                setEditorText(e.target.value);
+                setDirty(true);
+              }}
+              autoSize={{minRows: 12, maxRows: 30}}
+              spellCheck={false}
+              className={styles.code}
+            />
+            <Text type="secondary" className={styles.hint}>
+              {isPyFile
+                ? t('Format wraps recorded steps with imports, a test function, and setup/teardown.')
+                : t('Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.', {lang: openLang})}
+            </Text>
+          </div>
+        )}
+      </div>
+
+      {/* RIGHT column: run controls + result + output */}
+      <div className={styles.testsCol}>
+        <Space.Compact className={styles.row}>
+          <Input
+            addonBefore={t('Keyword (-k)')}
+            placeholder={t('optional pytest -k filter')}
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            disabled={!workingDir || running}
+            spellCheck={false}
+          />
+          <Button
+            type="primary"
+            icon={<IconPlayerPlay size={16} />}
+            onClick={() => runTests({keyword: keyword.trim() || null})}
+            loading={running}
+            disabled={!ready || !workingDir}
+          >
+            {t('Run all tests')}
+          </Button>
+        </Space.Compact>
+        {!ready && workingDir && (
+          <Text type="warning">{t('Set up the environment before running tests.')}</Text>
+        )}
+
+        <Space wrap align="center" className={styles.resultRow}>
+          <Text strong>{t('Result')}</Text>
+          {resultBanner || <Text type="secondary">{t('run a test to see output')}</Text>}
+          {structured && (
+            <>
               <Tag color="success">{result.totals.passed} passed</Tag>
               {result.totals.failures > 0 && <Tag color="error">{result.totals.failures} failed</Tag>}
               {result.totals.errors > 0 && <Tag color="error">{result.totals.errors} errors</Tag>}
               {result.totals.skipped > 0 && <Tag color="warning">{result.totals.skipped} skipped</Tag>}
               <Text type="secondary">{result.totals.time?.toFixed?.(2)}s</Text>
-            </Space>
+            </>
           )}
-          {result?.tests?.length > 0 && (
-            <List
-              size="small"
-              className={styles.files}
-              dataSource={result.tests}
-              renderItem={(tc) => (
-                <List.Item>
-                  <Space>
-                    <Tag color={OUTCOME_COLOR[tc.outcome] || 'default'}>{tc.outcome}</Tag>
-                    <Text>{tc.name}</Text>
-                  </Space>
-                </List.Item>
-              )}
-            />
-          )}
-          {(running || runLog.length > 0) && (
-            <pre className={styles.log} ref={runLogRef}>
-              {runLog.map((l) => l.chunk).join('')}
-            </pre>
-          )}
-        </section>
-      </Space>
+        </Space>
+        {result?.tests?.length > 0 && (
+          <List
+            size="small"
+            className={styles.files}
+            dataSource={result.tests}
+            renderItem={(tc) => (
+              <List.Item>
+                <Space>
+                  <Tag color={OUTCOME_COLOR[tc.outcome] || 'default'}>{tc.outcome}</Tag>
+                  <Text>{tc.name}</Text>
+                </Space>
+              </List.Item>
+            )}
+          />
+        )}
+        <pre className={styles.outputLog} ref={runLogRef}>
+          {runLog.length ? runLog.map((l) => l.chunk).join('') : t('Test output will appear here.')}
+        </pre>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={styles.panel}>
+      <Tabs
+        activeKey={panelTab}
+        onChange={setPanelTab}
+        size="small"
+        className={styles.fill}
+        items={[
+          {key: 'tests', label: t('Tests'), children: testsPane},
+          {
+            key: 'environment',
+            label: (
+              <span>
+                {t('Environment')}{' '}
+                <Tag color={ready ? 'success' : 'default'} className={styles.tabTag}>
+                  {ready ? t('ready') : t('setup')}
+                </Tag>
+              </span>
+            ),
+            children: environmentPane,
+          },
+        ]}
+      />
     </div>
   );
 };

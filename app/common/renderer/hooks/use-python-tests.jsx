@@ -81,12 +81,16 @@ export function usePythonTests() {
       }
       setRunLog([]);
       setResult(null);
+      // Mark running BEFORE the IPC round-trip so the UI never briefly shows the
+      // previous run's result with the (now-cleared) summary.
+      setRun({status: 'running'});
       const res = await py.run({workingDir, paths, keyword});
       if (res?.status === 'started') {
         runIdRef.current = res.runId;
-        setRun({status: 'running'});
       } else if (res?.status === 'env_not_ready') {
         setRun({status: 'error', reason: 'env_not_ready'});
+      } else {
+        setRun(null); // unknown response — don't leave a stuck 'running' state
       }
       return res;
     },

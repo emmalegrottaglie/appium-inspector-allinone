@@ -7,6 +7,16 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
 
 ### Added
 
+- **Tests tab redesigned for readability.** The tab now has **Environment** and
+  **Tests** sub-tabs (setup lives in its own place), and the Tests view is a
+  **two-column layout** — file list + editor on the left, run controls + result +
+  a large output pane on the right — so you no longer scroll up/down to run a test
+  and read its output.
+- **PASS / FAIL result badge for Ruby & JavaScript.** These languages produce no
+  JUnit report, so runs now show a clear exit-code-based **PASSED** / **FAILED
+  (exit N)** badge (alongside the existing per-test summary for Python/Robot).
+
+
 - **Bundled Appium server control** (start screen → *Local Server* tab). Start /
   stop an app-managed server with a status lifecycle (`stopped → starting →
   running → stopping → error`), HTTP `/status` readiness polling, a streamed
