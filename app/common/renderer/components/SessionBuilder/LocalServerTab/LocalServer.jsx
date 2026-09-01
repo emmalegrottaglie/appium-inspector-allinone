@@ -127,12 +127,7 @@ const LocalServer = () => {
           >
             {t('Start Server')}
           </Button>
-          <Button
-            danger
-            icon={<IconPlayerStop size={16} />}
-            onClick={stop}
-            disabled={!isUp}
-          >
+          <Button danger icon={<IconPlayerStop size={16} />} onClick={stop} disabled={!isUp}>
             {t('Stop Server')}
           </Button>
         </Space>

@@ -128,7 +128,10 @@ function spawnExt(sender, type, label, args) {
     });
 }
 
-async function install(sender, {type, name, source = null, packageName = null, allowThirdParty = false}) {
+async function install(
+  sender,
+  {type, name, source = null, packageName = null, allowThirdParty = false},
+) {
   assertType(type);
 
   // --- official install: bare short-name, no --source ---

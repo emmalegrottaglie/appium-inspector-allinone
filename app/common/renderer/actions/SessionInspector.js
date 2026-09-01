@@ -574,8 +574,7 @@ export function findAndAssign(strategy, selector, variableName, isArray) {
 }
 
 // Quote a value for embedding inside a UiAutomator selector string.
-const uiAutomatorQuote = (v) =>
-  `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+const uiAutomatorQuote = (v) => `"${String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 
 /**
  * Build an Android UiAutomator `scrollIntoView` selector that scrolls a
@@ -594,7 +593,10 @@ export function buildScrollIntoView(elementLocatorsData) {
     inner = `new UiSelector().description(${uiAutomatorQuote(byKey['accessibility id'])})`;
   } else if (byKey.id) {
     inner = `new UiSelector().resourceId(${uiAutomatorQuote(byKey.id)})`;
-  } else if (byKey['-android uiautomator'] && !byKey['-android uiautomator'].includes('.instance(')) {
+  } else if (
+    byKey['-android uiautomator'] &&
+    !byKey['-android uiautomator'].includes('.instance(')
+  ) {
     // An optimal, non-positional UiAutomator selector can be reused as-is.
     inner = byKey['-android uiautomator'];
   }

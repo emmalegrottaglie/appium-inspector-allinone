@@ -28,23 +28,20 @@ export function usePythonEnv() {
     refresh();
   }, [refresh]);
 
-  const startInstall = useCallback(
-    async (opts = {}) => {
-      const res = await env.installDeps(opts);
-      if (res?.status === 'started') {
-        runIdRef.current = res.runId;
-        stepRef.current = 'install';
-        setPhase('install');
-      } else if (res?.status === 'needs_confirmation') {
-        setConfirm({package: res.package});
-        setPhase('idle');
-      } else if (res?.status === 'venv_missing') {
-        setPhase('error');
-      }
-      return res;
-    },
-    [],
-  );
+  const startInstall = useCallback(async (opts = {}) => {
+    const res = await env.installDeps(opts);
+    if (res?.status === 'started') {
+      runIdRef.current = res.runId;
+      stepRef.current = 'install';
+      setPhase('install');
+    } else if (res?.status === 'needs_confirmation') {
+      setConfirm({package: res.package});
+      setPhase('idle');
+    } else if (res?.status === 'venv_missing') {
+      setPhase('error');
+    }
+    return res;
+  }, []);
 
   // stream the active phase's output; advance/finish on exit
   useEffect(() => {

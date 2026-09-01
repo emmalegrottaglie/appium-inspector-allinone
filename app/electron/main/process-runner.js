@@ -32,7 +32,11 @@ const running = new Map();
  * @param {(d: object) => void} [hooks.onExit]   - {code, signal, error}
  * @returns {{runId: string, pid: number|undefined}}
  */
-export function startProcess(sender, {command, args = [], options = {}, shell = false}, hooks = {}) {
+export function startProcess(
+  sender,
+  {command, args = [], options = {}, shell = false},
+  hooks = {},
+) {
   const runId = randomUUID();
 
   const send = (channel, payload) => {

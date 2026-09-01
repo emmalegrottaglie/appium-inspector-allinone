@@ -30,7 +30,7 @@
 ## 🚀 All-in-One fork
 
 This is a fork of [appium/appium-inspector](https://github.com/appium/appium-inspector)
-extended into a **self-contained desktop app** — everything you need to inspect *and*
+extended into a **self-contained desktop app** — everything you need to inspect _and_
 automate, with no separate Appium install, driver setup, or Python wiring. From the GUI you can:
 
 - **🖥️ Run a bundled Appium server** — Appium 3.5.0 ships inside the app. Start/stop it,

@@ -14,7 +14,9 @@ const runner = window.electronIPC?.runner;
 export function useProcessRunner() {
   const [status, setStatus] = useState(/** @type {RunStatus} */ ('idle'));
   const [output, setOutput] = useState(/** @type {{stream: string, chunk: string}[]} */ ([]));
-  const [exit, setExit] = useState(/** @type {{code: number|null, signal: string|null, error: string|null}|null} */ (null));
+  const [exit, setExit] = useState(
+    /** @type {{code: number|null, signal: string|null, error: string|null}|null} */ (null),
+  );
   const activeRunId = useRef(null);
 
   // Subscribe once; filter events by the run we currently care about.

@@ -117,10 +117,8 @@ async function status() {
     const key = name.toLowerCase();
     return {name, installed: key in pkgs, version: pkgs[key] ?? null};
   });
-  const ready =
-    python.found && python.meetsMinimum && venv && required.every((r) => r.installed);
-  const robotReady =
-    venv && 'robotframework' in pkgs && 'robotframework-appiumlibrary' in pkgs;
+  const ready = python.found && python.meetsMinimum && venv && required.every((r) => r.installed);
+  const robotReady = venv && 'robotframework' in pkgs && 'robotframework-appiumlibrary' in pkgs;
   return {python, venv, packages: pkgs, required, ready, robotReady};
 }
 

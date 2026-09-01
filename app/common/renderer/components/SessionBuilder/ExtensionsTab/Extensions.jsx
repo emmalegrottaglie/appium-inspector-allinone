@@ -1,9 +1,4 @@
-import {
-  IconDownload,
-  IconRefresh,
-  IconStethoscope,
-  IconTrash,
-} from '@tabler/icons-react';
+import {IconDownload, IconRefresh, IconStethoscope, IconTrash} from '@tabler/icons-react';
 import {Alert, Button, Empty, Input, List, Segmented, Space, Spin, Tag, Typography} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -24,8 +19,19 @@ const hasUpdate = (entry) =>
  */
 const ExtensionManager = ({type}) => {
   const {t} = useTranslation();
-  const {items, loading, op, opLog, confirm, clearConfirm, refresh, install, update, uninstall, doctor} =
-    useAppiumExtensions(type);
+  const {
+    items,
+    loading,
+    op,
+    opLog,
+    confirm,
+    clearConfirm,
+    refresh,
+    install,
+    update,
+    uninstall,
+    doctor,
+  } = useAppiumExtensions(type);
   const [name, setName] = useState('');
   const logRef = useRef(null);
 
@@ -53,7 +59,9 @@ const ExtensionManager = ({type}) => {
     <Space direction="vertical" size="middle" className={styles.fill}>
       <Space.Compact className={styles.row}>
         <Input
-          placeholder={t(type === 'driver' ? 'e.g. uiautomator2, xcuitest' : 'e.g. images, relaxed-caps')}
+          placeholder={t(
+            type === 'driver' ? 'e.g. uiautomator2, xcuitest' : 'e.g. images, relaxed-caps',
+          )}
           value={name}
           onChange={(e) => setName(e.target.value.trim())}
           onPressEnter={() => name && install({name})}
@@ -217,7 +225,11 @@ const Extensions = () => {
           ]}
         />
         {/* Remount per kind so each gets its own hook instance/state. */}
-        {kind === 'driver' ? <ExtensionManager type="driver" key="driver" /> : <ExtensionManager type="plugin" key="plugin" />}
+        {kind === 'driver' ? (
+          <ExtensionManager type="driver" key="driver" />
+        ) : (
+          <ExtensionManager type="plugin" key="plugin" />
+        )}
       </Space>
     </div>
   );
