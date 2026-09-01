@@ -75,15 +75,7 @@ function pingStatus(cfg) {
 }
 
 async function assembleLaunch(cfg) {
-  const serverArgs = [
-    'server',
-    '--address',
-    cfg.host,
-    '--port',
-    String(cfg.port),
-    '--base-path',
-    cfg.basePath,
-  ];
+  const serverArgs = ['server', '--address', cfg.host, '--port', String(cfg.port), '--base-path', cfg.basePath];
   if (cfg.allowCors) {
     serverArgs.push('--allow-cors');
   }

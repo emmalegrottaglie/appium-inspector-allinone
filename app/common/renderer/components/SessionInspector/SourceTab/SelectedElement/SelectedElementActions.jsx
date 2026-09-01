@@ -1,15 +1,10 @@
-import {
-  IconArrowsVertical,
-  IconEraser,
-  IconFocus2,
-  IconSend2,
-  IconStopwatch,
-} from '@tabler/icons-react';
+import {IconArrowsVertical, IconEraser, IconFocus2, IconSend2, IconStopwatch} from '@tabler/icons-react';
 import {Button, Input, Row, Space, Tooltip} from 'antd';
 import {useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {ROW} from '../../../../constants/antd-types.js';
+
 import styles from './SelectedElement.module.css';
 
 /**
@@ -39,9 +34,7 @@ const SelectedElementActions = (props) => {
   const isAndroid = locatorKeys.has('-android uiautomator');
   const canScrollTo =
     isAndroid &&
-    (locatorKeys.has('accessibility id') ||
-      locatorKeys.has('id') ||
-      locatorKeys.has('-android uiautomator'));
+    (locatorKeys.has('accessibility id') || locatorKeys.has('id') || locatorKeys.has('-android uiautomator'));
 
   return (
     <Row justify="center" type={ROW.FLEX} align="middle" className={styles.selectedElemActions}>
@@ -51,9 +44,7 @@ const SelectedElementActions = (props) => {
           icon={<IconFocus2 size={18} />}
           loading={tapButtonLoadingState}
           id="btnTapElement"
-          onClick={() =>
-            applyClientMethod({methodName: 'elementClick', elementId: selectedElementId})
-          }
+          onClick={() => applyClientMethod({methodName: 'elementClick', elementId: selectedElementId})}
         />
       </Tooltip>
       {isAndroid && (
@@ -93,9 +84,7 @@ const SelectedElementActions = (props) => {
             disabled={elementActionsDisabled}
             id="btnClearElement"
             icon={<IconEraser size={18} />}
-            onClick={() =>
-              applyClientMethod({methodName: 'elementClear', elementId: selectedElementId})
-            }
+            onClick={() => applyClientMethod({methodName: 'elementClear', elementId: selectedElementId})}
           />
         </Tooltip>
       </Space.Compact>

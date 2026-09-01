@@ -1,17 +1,11 @@
-import {
-  IconChevronDown,
-  IconDeviceFloppy,
-  IconEraser,
-  IconEyeCode,
-  IconFiles,
-  IconVideo,
-} from '@tabler/icons-react';
+import {IconChevronDown, IconDeviceFloppy, IconEraser, IconEyeCode, IconFiles, IconVideo} from '@tabler/icons-react';
 import {Button, Card, Dropdown, Flex, Select, Space, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {BUTTON} from '../../../constants/antd-types.js';
 import {CLIENT_FRAMEWORK_MAP} from '../../../lib/client-frameworks/map.js';
 import {copyToClipboard} from '../../../utils/other.js';
+
 import inspectorStyles from '../SessionInspector.module.css';
 
 /**

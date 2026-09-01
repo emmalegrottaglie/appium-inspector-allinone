@@ -6,11 +6,7 @@ import {useNavigate} from 'react-router';
 
 import {BUTTON} from '../../constants/antd-types.js';
 import {LINKS} from '../../constants/common.js';
-import {
-  ADD_CLOUD_PROVIDER_TAB_KEY,
-  SERVER_TYPES,
-  SESSION_BUILDER_TABS,
-} from '../../constants/session-builder.js';
+import {ADD_CLOUD_PROVIDER_TAB_KEY, SERVER_TYPES, SESSION_BUILDER_TABS} from '../../constants/session-builder.js';
 import {openLink} from '../../polyfills.js';
 import {isEmpty} from '../../utils/common.js';
 import {log} from '../../utils/logger.js';
@@ -25,6 +21,7 @@ import AdvancedServerParams from './ServerDetails/AdvancedServerParams.jsx';
 import CloudProviders from './ServerDetails/CloudProviders.jsx';
 import CloudProviderSelector from './ServerDetails/CloudProviderSelector.jsx';
 import ServerTabCustom from './ServerDetails/ServerTabCustom.jsx';
+
 import styles from './SessionBuilder.module.css';
 
 // There are 3 possible cases for an empty capability set:
@@ -166,8 +163,7 @@ const Session = (props) => {
             {
               label: (
                 <span>
-                  {t('Saved Capability Sets')}{' '}
-                  <Badge count={savedSessions.length} offset={[0, -3]} />
+                  {t('Saved Capability Sets')} <Badge count={savedSessions.length} offset={[0, -3]} />
                 </span>
               ),
               key: SESSION_BUILDER_TABS.SAVED_CAPS,
@@ -219,9 +215,7 @@ const Session = (props) => {
             <Space.Compact>
               {capsUUID && (
                 <Button
-                  onClick={() =>
-                    saveSession({server, serverType, caps, name: capsName, uuid: capsUUID})
-                  }
+                  onClick={() => saveSession({server, serverType, caps, name: capsName, uuid: capsUUID})}
                   disabled={!isCapsDirty || isEditingDesiredCaps}
                 >
                   {t('Save')}

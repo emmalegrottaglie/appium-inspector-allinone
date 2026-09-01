@@ -1,11 +1,12 @@
 import {App, ConfigProvider, Layout, theme} from 'antd';
-import {createContext, useState} from 'react';
+import {createContext, useMemo, useState} from 'react';
 
 import {PREFERRED_THEME} from '../../shared/setting-defs.js';
-import darkTheme from '../assets/stylesheets/prism-dark.css?url';
-import lightTheme from '../assets/stylesheets/prism-light.css?url';
 import Notification from '../components/Notification.jsx';
 import {getSetting, setSetting, setTheme} from '../polyfills.js';
+
+import darkTheme from '../assets/stylesheets/prism-dark.css?url';
+import lightTheme from '../assets/stylesheets/prism-light.css?url';
 
 const systemPrefersDarkTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const savedTheme = await getSetting(PREFERRED_THEME);
@@ -35,8 +36,7 @@ export const ThemeContext = createContext(null);
 export const ThemeProvider = ({children}) => {
   const [preferredTheme, setPreferredTheme] = useState(savedTheme);
 
-  const isDarkTheme =
-    preferredTheme === 'dark' || (preferredTheme === 'system' && systemPrefersDarkTheme);
+  const isDarkTheme = preferredTheme === 'dark' || (preferredTheme === 'system' && systemPrefersDarkTheme);
 
   loadHighlightTheme(isDarkTheme);
 
@@ -85,8 +85,10 @@ export const ThemeProvider = ({children}) => {
     },
   };
 
+  const themeContext = useMemo(() => ({updateTheme, preferredTheme, isDarkTheme}), [preferredTheme, isDarkTheme]);
+
   return (
-    <ThemeContext value={{updateTheme, preferredTheme, isDarkTheme}}>
+    <ThemeContext value={themeContext}>
       <ConfigProvider theme={themeConfig}>
         <App>
           <Layout>{children}</Layout>

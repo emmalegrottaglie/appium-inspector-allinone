@@ -1,6 +1,5 @@
 import {Space, Spin} from 'antd';
 
-import inspectorStyles from '../../SessionInspector.module.css';
 import InteractionsNotAvailableMessage from './InteractionsNotAvailableMessage.jsx';
 import SelectedElementActions from './SelectedElementActions.jsx';
 import SelectedElementAttributesTable from './SelectedElementAttributesTable.jsx';
@@ -9,6 +8,8 @@ import SelectedElementCard from './SelectedElementCard.jsx';
 import SelectedElementLocatorsTable from './SelectedElementLocatorsTable.jsx';
 import SnapshotMaxDepthReachedMessage from './SnapshotMaxDepthReachedMessage.jsx';
 import XpathNotRecommendedMessage from './XpathNotRecommendedMessage.jsx';
+
+import inspectorStyles from '../../SessionInspector.module.css';
 
 /**
  * Placeholder shown for the element ID while the element search is in progress.
@@ -30,6 +31,9 @@ const SelectedElement = (props) => {
     elementInteractionsNotAvailable,
     selectedElementSearchInProgress,
     sessionSettings,
+    collapsible,
+    collapsed,
+    onToggleCollapse,
   } = props;
 
   const elementActionsDisabled = selectedElementSearchInProgress || isFindingElementsTimes;
@@ -59,15 +63,13 @@ const SelectedElement = (props) => {
       selectedElementId={selectedElementId}
       elementAttributesData={elementAttributesData}
       elementActionsDisabled={elementActionsDisabled}
+      collapsible={collapsible}
+      collapsed={collapsed}
+      onToggleCollapse={onToggleCollapse}
     >
       <Space className={inspectorStyles.spaceContainer} orientation="vertical" size="middle">
-        <SnapshotMaxDepthReachedMessage
-          selectedElementPath={selectedElementPath}
-          sessionSettings={sessionSettings}
-        />
-        <InteractionsNotAvailableMessage
-          elementInteractionsNotAvailable={elementInteractionsNotAvailable}
-        />
+        <SnapshotMaxDepthReachedMessage selectedElementPath={selectedElementPath} sessionSettings={sessionSettings} />
+        <InteractionsNotAvailableMessage elementInteractionsNotAvailable={elementInteractionsNotAvailable} />
         <SelectedElementActions
           {...props}
           elementActionsDisabled={elementActionsDisabled}
@@ -78,10 +80,7 @@ const SelectedElement = (props) => {
           isFindingElementsTimes={isFindingElementsTimes}
           elementLocatorsData={elementLocatorsData}
         />
-        <XpathNotRecommendedMessage
-          currentContext={currentContext}
-          elementLocatorsData={elementLocatorsData}
-        />
+        <XpathNotRecommendedMessage currentContext={currentContext} elementLocatorsData={elementLocatorsData} />
         <SelectedElementBoxModel selectedElement={selectedElement} />
         <SelectedElementAttributesTable elementAttributesData={elementAttributesData} />
       </Space>

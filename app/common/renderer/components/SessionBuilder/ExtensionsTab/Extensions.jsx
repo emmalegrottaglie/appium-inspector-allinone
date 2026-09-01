@@ -4,13 +4,13 @@ import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {useAppiumExtensions} from '../../../hooks/use-appium-extensions.jsx';
+
 import styles from './Extensions.module.css';
 
 const {Text} = Typography;
 
 const isInstalled = (entry) => entry?.installed === true || (entry && 'version' in entry);
-const hasUpdate = (entry) =>
-  isInstalled(entry) && (entry.updateVersion != null || entry.upToDate === false);
+const hasUpdate = (entry) => isInstalled(entry) && (entry.updateVersion != null || entry.upToDate === false);
 
 /**
  * Manage one extension kind ('driver' | 'plugin') against the app's isolated
@@ -19,19 +19,8 @@ const hasUpdate = (entry) =>
  */
 const ExtensionManager = ({type}) => {
   const {t} = useTranslation();
-  const {
-    items,
-    loading,
-    op,
-    opLog,
-    confirm,
-    clearConfirm,
-    refresh,
-    install,
-    update,
-    uninstall,
-    doctor,
-  } = useAppiumExtensions(type);
+  const {items, loading, op, opLog, confirm, clearConfirm, refresh, install, update, uninstall, doctor} =
+    useAppiumExtensions(type);
   const [name, setName] = useState('');
   const logRef = useRef(null);
 
@@ -59,9 +48,7 @@ const ExtensionManager = ({type}) => {
     <Space direction="vertical" size="middle" className={styles.fill}>
       <Space.Compact className={styles.row}>
         <Input
-          placeholder={t(
-            type === 'driver' ? 'e.g. uiautomator2, xcuitest' : 'e.g. images, relaxed-caps',
-          )}
+          placeholder={t(type === 'driver' ? 'e.g. uiautomator2, xcuitest' : 'e.g. images, relaxed-caps')}
           value={name}
           onChange={(e) => setName(e.target.value.trim())}
           onPressEnter={() => name && install({name})}

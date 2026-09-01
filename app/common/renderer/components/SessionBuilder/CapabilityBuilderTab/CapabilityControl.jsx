@@ -3,6 +3,7 @@ import {useTranslation} from 'react-i18next';
 
 import {INPUT} from '../../../constants/antd-types.js';
 import {CAPABILITY_TYPES} from '../../../constants/session-builder.js';
+
 import styles from './CapabilityBuilderTab.module.css';
 
 const CapabilityControl = ({cap, onSetCapabilityParam, onPressEnter, isEditingDesiredCaps, id}) => {
@@ -27,8 +28,8 @@ const CapabilityControl = ({cap, onSetCapabilityParam, onPressEnter, isEditingDe
         <Switch
           disabled={isEditingDesiredCaps}
           id={id}
-          checkedChildren={'true'}
-          unCheckedChildren={'false'}
+          checkedChildren="true"
+          unCheckedChildren="false"
           placeholder={t('Value')}
           checked={cap.value}
           onChange={(value) => onSetCapabilityParam(value)}
