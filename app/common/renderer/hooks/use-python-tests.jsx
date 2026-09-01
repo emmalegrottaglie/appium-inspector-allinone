@@ -84,7 +84,15 @@ export function usePythonTests() {
       // Mark running BEFORE the IPC round-trip so the UI never briefly shows the
       // previous run's result with the (now-cleared) summary.
       setRun({status: 'running'});
-      const res = await py.run({workingDir, paths, keyword});
+      let res;
+      try {
+        res = await py.run({workingDir, paths, keyword});
+      } catch (err) {
+        // A rejected invoke (deleted working dir, bad -k, missing file, main-side
+        // throw) must not leave the UI stuck on 'running' — surface it as an error.
+        setRun({status: 'error', reason: 'launch_failed', message: err?.message});
+        return {status: 'error', message: err?.message};
+      }
       if (res?.status === 'started') {
         runIdRef.current = res.runId;
       } else if (res?.status === 'env_not_ready') {

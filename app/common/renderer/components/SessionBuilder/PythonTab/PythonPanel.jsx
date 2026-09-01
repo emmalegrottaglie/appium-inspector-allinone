@@ -286,6 +286,8 @@ const PythonPanel = () => {
     resultBanner = <Tag color="processing">{t('RUNNING…')}</Tag>;
   } else if (run?.reason === 'env_not_ready') {
     resultBanner = <Tag color="error">{t('ENV NOT READY')}</Tag>;
+  } else if (run?.reason === 'launch_failed') {
+    resultBanner = <Tag color="error">{t('COULD NOT RUN')}</Tag>;
   } else if (finished) {
     if (structured && structuredTotal === 0) {
       // A report with no test cases (e.g. a -k filter that matched nothing) is
@@ -304,7 +306,8 @@ const PythonPanel = () => {
       ) : (
         <Tag color="error">
           {t('FAILED')}
-          {!structured && run.code != null ? ` (exit ${run.code})` : ''}
+          {!structured &&
+            (run.code != null ? ` (exit ${run.code})` : ` (${t('could not run')})`)}
         </Tag>
       );
     }
@@ -575,7 +578,7 @@ const PythonPanel = () => {
         <Space wrap align="center" className={styles.resultRow}>
           <Text strong>{t('Result')}</Text>
           {resultBanner || <Text type="secondary">{t('run a test to see output')}</Text>}
-          {structured && (
+          {structured && structuredTotal > 0 && (
             <>
               <Tag color="success">{result.totals.passed} passed</Tag>
               {result.totals.failures > 0 && <Tag color="error">{result.totals.failures} failed</Tag>}
