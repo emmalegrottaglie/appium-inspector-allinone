@@ -65,21 +65,25 @@ export function useAppiumExtensions(type) {
   }, [refresh]);
 
   // Interpret a main-process result: either a started op or a consent request.
-  const handleResult = useCallback((res, meta) => {
-    if (res?.status === 'started') {
-      opRunId.current = res.runId;
-      setOpLog([]);
-      setOp({...meta, status: 'running', runId: res.runId});
-      setConfirm(null);
-    } else if (res?.status === 'needs_confirmation') {
-      // kind: 'not_official' (unknown short-name) | 'third_party' (explicit source)
-      setConfirm({kind: res.kind, name: res.name, source: res.source ?? 'npm', type});
-    }
-    return res;
-  }, [type]);
+  const handleResult = useCallback(
+    (res, meta) => {
+      if (res?.status === 'started') {
+        opRunId.current = res.runId;
+        setOpLog([]);
+        setOp({...meta, status: 'running', runId: res.runId});
+        setConfirm(null);
+      } else if (res?.status === 'needs_confirmation') {
+        // kind: 'not_official' (unknown short-name) | 'third_party' (explicit source)
+        setConfirm({kind: res.kind, name: res.name, source: res.source ?? 'npm', type});
+      }
+      return res;
+    },
+    [type],
+  );
 
   const install = useCallback(
-    (opts) => ext.install({type, ...opts}).then((r) => handleResult(r, {kind: 'install', name: opts.name})),
+    (opts) =>
+      ext.install({type, ...opts}).then((r) => handleResult(r, {kind: 'install', name: opts.name})),
     [type, handleResult],
   );
   const update = useCallback(

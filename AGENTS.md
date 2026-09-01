@@ -15,14 +15,14 @@ into a **self-contained "all-in-one" desktop app**. On top of the normal
 Inspector (capability builder, live session inspector, source tree, gestures,
 recorder), we added the ability to, from the GUI:
 
-1. Run a **bundled Appium server** (Appium ships *inside* the app).
+1. Run a **bundled Appium server** (Appium ships _inside_ the app).
 2. **Manage drivers & plugins** (install/update/uninstall/doctor).
 3. **Author & run tests** — Python/pytest (full in-app editor), plus Robot
    Framework, Ruby, and JavaScript/WebdriverIO via detected system toolchains.
 4. Fire **raw WebDriver commands** (Postman-style).
 5. Record a robust **"Scroll to & tap"** step (emits `scrollIntoView`).
 
-**Repo root:** `C:\AppiumInspectorProject` (the repo *is* this folder; run all
+**Repo root:** `C:\AppiumInspectorProject` (the repo _is_ this folder; run all
 git/npm/build commands here). Sibling folders like `testssss/` are local test
 scratch and are ignored via `.git/info/exclude` (not committed).
 
@@ -42,7 +42,7 @@ scratch and are ignored via `.git/info/exclude` (not committed).
 - **lodash was removed upstream.** Do **not** reintroduce it. Use the helpers in
   `app/common/renderer/utils/common.js` (`debounce`, `isEmpty`, `omit`, etc.).
 - **Security model is load-bearing — never weaken it** (see §7). Renderer sends
-  *intent*; the main process builds commands from fixed templates; `shell:false`
+  _intent_; the main process builds commands from fixed templates; `shell:false`
   on spawns (except the vetted `.cmd` case in §9); values never start with `-`.
 - **Do NOT edit `.github/workflows/*`** to fix fork CI. Those are upstream's;
   editing them causes merge conflicts on every upstream pull. Fork CI noise
@@ -61,13 +61,13 @@ scratch and are ignored via `.git/info/exclude` (not committed).
   by hand or by guess:
   - **`/code-review`** — the review skill. It is **user-invoked only** (an agent
     cannot call it via the Skill tool; it's reserved for the human typing
-    `/code-review`). So: after a change, *ask the user to run `/code-review`* and
+    `/code-review`). So: after a change, _ask the user to run `/code-review`_ and
     then address what it finds. Do a careful manual self-review of your own diff
     regardless.
   - **`verify` / `run`** — launch the real app and confirm the change behaves,
     instead of assuming it works from the code alone.
   - **`simplify`** — for reuse/cleanup passes after a feature lands.
-  Prefer these over ad-hoc greps/manual reasoning when a skill covers the task.
+    Prefer these over ad-hoc greps/manual reasoning when a skill covers the task.
 - **Verify before you commit** (the standard loop): `npm run build:electron`
   passes → `npx eslint <changed files>` is error-free (warnings OK) →
   self-review the diff (and ask the user to run `/code-review`) → **`verify`/`run`**
@@ -117,15 +117,15 @@ Five principles, applied throughout:
 
 1. **One process runner.** `process-runner.js` is the single way to spawn an
    external command and stream its output to the renderer. The Appium server,
-   the extension CLI, pip, pytest, ruby, node, robot are *all just callers of
-   it*. Key exports: `startProcess(sender, spec, hooks)` (streams
+   the extension CLI, pip, pytest, ruby, node, robot are _all just callers of
+   it_. Key exports: `startProcess(sender, spec, hooks)` (streams
    `process:output`/`process:exit`), `collectProcess(spec)` (run-to-completion,
    captured output — for parsing `... --json`), `cancelProcess(runId)`,
    `killAllProcesses()`, `setupProcessIPC()`.
 2. **Resolution is isolated.** `binary-resolver.js` is the only place that knows
    where a tool lives (user-configured path → bundled under `resourcesPath` →
    system PATH). Bundled-vs-system is a one-place change.
-3. **Constrained IPC (security).** The renderer sends *intent* (e.g.
+3. **Constrained IPC (security).** The renderer sends _intent_ (e.g.
    `{type, name}`), never an executable or free-form args. The main process
    validates and builds every command from fixed templates. The one
    general-purpose "spawn anything" channel (`process:start`) is **dev-only**.
@@ -135,7 +135,7 @@ Five principles, applied throughout:
 5. **Two execution models kept separate.** The inspector session + the Raw
    Command panel share **one** live WebDriver session over HTTP. The test runner
    spawns pytest/robot/ruby/node which open their **own** session. Server/driver
-   management touches the server *process*, not a session.
+   management touches the server _process_, not a session.
 
 **Data flow (every feature follows this shape):**
 
@@ -159,16 +159,17 @@ it, switch preload to `contextBridge.exposeInMainWorld`.)
 
 ## 5. Feature map (where each all-in-one feature lives)
 
-| Feature | UI | Hook | Main module | IPC channels |
-|---|---|---|---|---|
-| **Local Server** | `SessionBuilder/LocalServerTab/LocalServer.jsx` | `use-appium-server.jsx` | `appium-server.js`, `appium-launch.js` | `appium:start/stop/getState`, `appium:status` |
-| **Drivers & Plugins** | `SessionBuilder/ExtensionsTab/Extensions.jsx` | `use-appium-extensions.jsx` | `appium-extensions.js` | `extensions:list/install/update/uninstall/doctor` |
-| **Tests (Py/Robot/Ruby/JS)** | `SessionBuilder/PythonTab/PythonPanel.jsx` | `use-python-env.jsx`, `use-python-tests.jsx`, `use-runtimes.jsx` | `python-env.js`, `python-tests.js`, `system-runtimes.js` | `python:*`, `runtimes:*`, result on `python:result` |
-| **Raw Command** | `SessionInspector/RawCommandTab/RawCommand.jsx` | — (renderer-only `fetch`) | — | none |
-| **Recorder "Save As"** | `SessionInspector/RecorderTab/RecorderTabCard.jsx` (button) + `Recorder.jsx` (`saveAs`) | — | `code-export.js` | `code:saveAs` |
-| **"Scroll to & tap"** | `SessionInspector/SourceTab/SelectedElement/SelectedElementActions.jsx` | — (thunk) | — | reuses `applyClientMethod` |
+| Feature                      | UI                                                                                      | Hook                                                             | Main module                                              | IPC channels                                        |
+| ---------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------- |
+| **Local Server**             | `SessionBuilder/LocalServerTab/LocalServer.jsx`                                         | `use-appium-server.jsx`                                          | `appium-server.js`, `appium-launch.js`                   | `appium:start/stop/getState`, `appium:status`       |
+| **Drivers & Plugins**        | `SessionBuilder/ExtensionsTab/Extensions.jsx`                                           | `use-appium-extensions.jsx`                                      | `appium-extensions.js`                                   | `extensions:list/install/update/uninstall/doctor`   |
+| **Tests (Py/Robot/Ruby/JS)** | `SessionBuilder/PythonTab/PythonPanel.jsx`                                              | `use-python-env.jsx`, `use-python-tests.jsx`, `use-runtimes.jsx` | `python-env.js`, `python-tests.js`, `system-runtimes.js` | `python:*`, `runtimes:*`, result on `python:result` |
+| **Raw Command**              | `SessionInspector/RawCommandTab/RawCommand.jsx`                                         | — (renderer-only `fetch`)                                        | —                                                        | none                                                |
+| **Recorder "Save As"**       | `SessionInspector/RecorderTab/RecorderTabCard.jsx` (button) + `Recorder.jsx` (`saveAs`) | —                                                                | `code-export.js`                                         | `code:saveAs`                                       |
+| **"Scroll to & tap"**        | `SessionInspector/SourceTab/SelectedElement/SelectedElementActions.jsx`                 | — (thunk)                                                        | —                                                        | reuses `applyClientMethod`                          |
 
 Notes that bite if you forget them:
+
 - **Inspector tabs live in `SessionInspectorTabs.jsx`** (upstream extracted them
   out of `SessionInspector.jsx`). Add inspector tabs there. Tab keys are in
   `constants/session-inspector.js` (`INSPECTOR_TABS`).
@@ -189,7 +190,7 @@ Notes that bite if you forget them:
   exited cleanly AND at least one test ran (`0 tests` → **NO TESTS**, not green);
   Ruby/JS pass iff exit code 0 (**PASSED / FAILED (exit N)**). The `run` object
   shape comes from `use-python-tests.jsx` (`{status:'running'|'done'|'error',
-  code?, reason?}`).
+code?, reason?}`).
 - **"Scroll to & tap"** (`scrollToElement` thunk in `actions/SessionInspector.js`)
   builds a `UiScrollable(...).scrollIntoView(<stable UiSelector>)`, finds it live
   (scrolls the device), then taps it through the normal `applyClientMethod`
@@ -212,7 +213,7 @@ npm run pack:electron                                # installer (.exe) + zip (u
 - **Bundled server:** `binary-resolver.js` expects
   `resources/appium/node_modules/appium/index.js`. It's launched with Electron's
   own Node via `ELECTRON_RUN_AS_NODE=1` + `process.execPath`.
-- **`afterPack` hook is required for packaging.** electron-builder *strips*
+- **`afterPack` hook is required for packaging.** electron-builder _strips_
   `node_modules` from `extraResources`, so the vendored server is copied into the
   packaged app by `build/afterPack.cjs` (plain `fs.cpSync`) instead. Don't switch
   back to `extraResources` for the server.
@@ -290,7 +291,7 @@ git diff --name-only --diff-filter=U                     # list conflicts
   downloads the binary). Approve with `npm approve-scripts electron` (etc.), or
   rely on the `allowScripts` block in `package.json`. Symptom if missed: the
   build can't find the electron binary.
-- **Windows `.cmd` spawn (`EINVAL`).** Node 20+ throws *synchronously* when
+- **Windows `.cmd` spawn (`EINVAL`).** Node 20+ throws _synchronously_ when
   spawning a `.cmd` shim (`npm.cmd`/`gem.cmd`/`oxygen.cmd`) with `shell:false`.
   `startProcess` catches sync spawn failures, and those callers pass `shell:true`
   (fixed templates). `node`/`ruby`/`python` are real `.exe` → `shell:false`.
@@ -299,7 +300,7 @@ git diff --name-only --diff-filter=U                     # list conflicts
   child of the app) inherits the app's env, so the app must be launched with
   `ANDROID_HOME` set.
 - **PATH is inherited at launch.** A running app can't see tools installed
-  *after* it launched (Ruby/Node show "not found"). Relaunch the app; runtime
+  _after_ it launched (Ruby/Node show "not found"). Relaunch the app; runtime
   detection re-runs on mount.
 - **`session_discovery` scope.** Appium 3 requires
   `--allow-insecure=*:session_discovery` (the `*:` scope) — a bare feature name

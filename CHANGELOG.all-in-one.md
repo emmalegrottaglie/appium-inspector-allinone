@@ -16,42 +16,41 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
   JUnit report, so runs now show a clear exit-code-based **PASSED** / **FAILED
   (exit N)** badge (alongside the existing per-test summary for Python/Robot).
 
-
-- **Bundled Appium server control** (start screen → *Local Server* tab). Start /
+- **Bundled Appium server control** (start screen → _Local Server_ tab). Start /
   stop an app-managed server with a status lifecycle (`stopped → starting →
-  running → stopping → error`), HTTP `/status` readiness polling, a streamed
+running → stopping → error`), HTTP `/status` readiness polling, a streamed
   log, and a non-loopback CORS warning. Reports whether the server is `bundled`
   (vendored in the app) or found on the `system` PATH.
-- **Driver & plugin management** (start screen → *Drivers & Plugins* tab).
+- **Driver & plugin management** (start screen → _Drivers & Plugins_ tab).
   List / install / update / uninstall / doctor Appium drivers and plugins into
   an app-isolated `APPIUM_HOME`, with a security gate: official names install
   directly; unknown names and explicit sources require confirmation; only npm +
   https GitHub sources are accepted; git/local are refused; major updates require
   an explicit opt-in.
-- **Python test runner** (start screen → *Python Tests* tab). Detect a system
+- **Python test runner** (start screen → _Python Tests_ tab). Detect a system
   Python (≥ 3.9), create an app-scoped virtualenv, install `Appium-Python-Client`
-  + `pytest`, pick a working directory, list `.py` files, run pytest with an
-  optional `-k` filter, and view a parsed pass/fail summary plus per-test
-  results. Streamed output throughout.
+  - `pytest`, pick a working directory, list `.py` files, run pytest with an
+    optional `-k` filter, and view a parsed pass/fail summary plus per-test
+    results. Streamed output throughout.
 - **Recorder "Save As…"** (Recorder tab). A split-button that saves the recorded
   test to a file via a native Save dialog, in the currently-selected language —
   or any of the 8 supported frameworks (Python, Java JUnit4/5, .NET NUnit, JS
   WebdriverIO/Oxygen, Ruby, Robot) via its dropdown — with the correct file
   extension. Lets you go from a recording straight to a saved test (e.g. into the
   Python Tests working folder) instead of copy-pasting steps.
-- **In-app test editor** (in the *Tests* tab). Open/edit/create test files in the
+- **In-app test editor** (in the _Tests_ tab). Open/edit/create test files in the
   working directory, with one-click **Save** and **Save & run** (runs just that
   file). For Python, a **Format** split-button wraps recorded steps into a
   complete runnable test — it detects which imports the steps actually use
   (`AppiumBy`, `ActionChains`/`ActionBuilder`/`PointerInput`/`interaction`,
   `WebDriverWait`), adds a `def test_*` + `try/finally` setup/teardown, and offers
   an optional implicit-wait variant.
-- **Multi-language test runners** (the *Tests* tab, renamed from *Python Tests*).
+- **Multi-language test runners** (the _Tests_ tab, renamed from _Python Tests_).
   Beyond Python/pytest, the runner now executes **Robot Framework** (`.robot`, on
   the same managed venv via `robotframework-appiumlibrary`, parsed xUnit results),
   **Ruby** (`.rb` via a system Ruby + `appium_lib_core`), and **JavaScript**
-  (`.js` via system Node + WebdriverIO, or the Oxygen CLI). A *Languages &
-  runtimes* card detects Ruby/Node/Oxygen on PATH and installs each language's
+  (`.js` via system Node + WebdriverIO, or the Oxygen CLI). A _Languages &
+  runtimes_ card detects Ruby/Node/Oxygen on PATH and installs each language's
   client deps. Python & Robot give per-test results; Ruby & JS report by exit
   code. (`system-runtimes.js`, `use-runtimes.jsx`.)
 - **"Scroll to & tap" recorder action** (Inspector → Source tab, Android). One
@@ -59,7 +58,7 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
   and taps it, recording a robust `UiScrollable(...).scrollIntoView(...)` locator
   (anchored on a stable content-desc / resource-id) instead of brittle
   coordinate swipes + `.instance(N)`.
-- **Raw WebDriver command panel** (session inspector → *Raw Command* tab). A
+- **Raw WebDriver command panel** (session inspector → _Raw Command_ tab). A
   Postman-style panel that sends GET/POST/DELETE requests straight to the
   server's WebDriver endpoints, riding the live session (`{sessionId}` expands).
 - **Process-runner foundation** — a single main-process module that spawns child
@@ -102,7 +101,7 @@ in [ALL-IN-ONE.md](ALL-IN-ONE.md).
   because the server is loopback-only.
 
 - **Startup crash** `ReferenceError: Cannot access 'isDev' before
-  initialization`. `binary-resolver.js` imported `isDev` from `helpers.js`, but
+initialization`. `binary-resolver.js` imported `isDev` from `helpers.js`, but
   `helpers.js` imports the appium modules (which pull in `binary-resolver`)
   before its own `isDev` is initialized — a temporal-dead-zone error in the
   bundled main process. `binary-resolver.js` now computes `isDev` locally.

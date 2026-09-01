@@ -33,7 +33,10 @@ export function usePythonTests() {
   }, [workingDir]);
 
   const readFile = useCallback((rel) => py.readFile(workingDir, rel), [workingDir]);
-  const saveFile = useCallback((rel, content) => py.saveFile(workingDir, rel, content), [workingDir]);
+  const saveFile = useCallback(
+    (rel, content) => py.saveFile(workingDir, rel, content),
+    [workingDir],
+  );
 
   // streamed pytest output + coarse run status
   useEffect(() => {
@@ -47,7 +50,9 @@ export function usePythonTests() {
     });
     const offExit = runner.onExit((d) => {
       if (d.runId === runIdRef.current) {
-        setRun((r) => (r ? {...r, status: d.error || d.code !== 0 ? 'error' : 'done', code: d.code} : r));
+        setRun((r) =>
+          r ? {...r, status: d.error || d.code !== 0 ? 'error' : 'done', code: d.code} : r,
+        );
       }
     });
     return () => {
@@ -105,5 +110,16 @@ export function usePythonTests() {
     [workingDir],
   );
 
-  return {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests};
+  return {
+    workingDir,
+    files,
+    run,
+    runLog,
+    result,
+    pickDir,
+    refreshFiles,
+    readFile,
+    saveFile,
+    runTests,
+  };
 }

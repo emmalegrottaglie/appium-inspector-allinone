@@ -136,12 +136,7 @@ const RawCommand = (props) => {
             placeholder="/session/{sessionId}/url"
             spellCheck={false}
           />
-          <Button
-            type="primary"
-            icon={<IconSend size={16} />}
-            loading={sending}
-            onClick={send}
-          >
+          <Button type="primary" icon={<IconSend size={16} />} loading={sending} onClick={send}>
             Send request
           </Button>
         </Space.Compact>
@@ -150,11 +145,7 @@ const RawCommand = (props) => {
           <Text type="secondary" className={styles.label}>
             Server URL
           </Text>
-          <Input
-            value={baseUrl}
-            onChange={(e) => setBaseUrl(e.target.value)}
-            spellCheck={false}
-          />
+          <Input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} spellCheck={false} />
           <Text type="secondary" className={styles.hint}>
             {sessionId
               ? `Active session ${sessionId} — "{sessionId}" in the path expands to it.`
@@ -174,7 +165,9 @@ const RawCommand = (props) => {
               spellCheck={false}
               className={styles.mono}
             />
-            {bodyError && <Alert type="error" message={bodyError} showIcon className={styles.bodyError} />}
+            {bodyError && (
+              <Alert type="error" message={bodyError} showIcon className={styles.bodyError} />
+            )}
           </div>
         )}
 

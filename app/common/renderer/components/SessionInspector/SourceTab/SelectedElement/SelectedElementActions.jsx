@@ -57,9 +57,7 @@ const SelectedElementActions = (props) => {
         />
       </Tooltip>
       {isAndroid && (
-        <Tooltip
-          title={t('Scroll to & tap — records a robust scrollIntoView instead of swipes')}
-        >
+        <Tooltip title={t('Scroll to & tap — records a robust scrollIntoView instead of swipes')}>
           <Button
             disabled={elementActionsDisabled || !canScrollTo}
             icon={<IconArrowsVertical size={18} />}

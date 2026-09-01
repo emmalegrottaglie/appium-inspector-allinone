@@ -59,10 +59,7 @@ const CONDITIONAL_IMPORTS = [
 
 // For a fresh "New test" we don't know what will be pasted, so include the
 // most common imports up front.
-const REQUIRED_IMPORTS = [
-  ...BASE_IMPORTS,
-  'from appium.webdriver.common.appiumby import AppiumBy',
-];
+const REQUIRED_IMPORTS = [...BASE_IMPORTS, 'from appium.webdriver.common.appiumby import AppiumBy'];
 
 // Pick the imports a given test body actually needs (word-boundary match).
 function importsForBody(body) {
@@ -160,8 +157,18 @@ const PythonPanel = () => {
   const {t} = useTranslation();
   const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage, installRobot} =
     usePythonEnv();
-  const {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests} =
-    usePythonTests();
+  const {
+    workingDir,
+    files,
+    run,
+    runLog,
+    result,
+    pickDir,
+    refreshFiles,
+    readFile,
+    saveFile,
+    runTests,
+  } = usePythonTests();
   const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
   const [keyword, setKeyword] = useState('');
   const [panelTab, setPanelTab] = useState('tests'); // 'environment' | 'tests'
@@ -306,8 +313,7 @@ const PythonPanel = () => {
       ) : (
         <Tag color="error">
           {t('FAILED')}
-          {!structured &&
-            (run.code != null ? ` (exit ${run.code})` : ` (${t('could not run')})`)}
+          {!structured && (run.code != null ? ` (exit ${run.code})` : ` (${t('could not run')})`)}
         </Tag>
       );
     }
@@ -318,7 +324,12 @@ const PythonPanel = () => {
       <section className={styles.card}>
         <Space className={styles.cardHeader}>
           <Text strong>{t('Environment')}</Text>
-          <Button size="small" icon={<IconRefresh size={14} />} onClick={refresh} disabled={settingUp} />
+          <Button
+            size="small"
+            icon={<IconRefresh size={14} />}
+            onClick={refresh}
+            disabled={settingUp}
+          />
         </Space>
         <EnvStatus status={status} />
         <Space className={styles.actions}>
@@ -371,7 +382,9 @@ const PythonPanel = () => {
           <Text strong>{t('Languages & runtimes')}</Text>
         </Space>
         <Text type="secondary" className={styles.hint}>
-          {t('Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).')}
+          {t(
+            'Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).',
+          )}
         </Text>
 
         <Space wrap>
@@ -379,7 +392,12 @@ const PythonPanel = () => {
           {status?.robotReady ? (
             <Text type="success">{t('ready')} (.robot)</Text>
           ) : (
-            <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
+            <Button
+              size="small"
+              onClick={installRobot}
+              loading={settingUp}
+              disabled={!status?.venv}
+            >
               {t('Add Robot Framework')}
             </Button>
           )}
@@ -444,9 +462,7 @@ const PythonPanel = () => {
             {workingDir}
           </Text>
         ) : (
-          <Text type="secondary">
-            {t('Choose a working directory to see and run your tests.')}
-          </Text>
+          <Text type="secondary">{t('Choose a working directory to see and run your tests.')}</Text>
         )}
         {workingDir && (
           <>
@@ -543,8 +559,13 @@ const PythonPanel = () => {
             />
             <Text type="secondary" className={styles.hint}>
               {isPyFile
-                ? t('Format wraps recorded steps with imports, a test function, and setup/teardown.')
-                : t('Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.', {lang: openLang})}
+                ? t(
+                    'Format wraps recorded steps with imports, a test function, and setup/teardown.',
+                  )
+                : t(
+                    'Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.',
+                    {lang: openLang},
+                  )}
             </Text>
           </div>
         )}
@@ -581,9 +602,13 @@ const PythonPanel = () => {
           {structured && structuredTotal > 0 && (
             <>
               <Tag color="success">{result.totals.passed} passed</Tag>
-              {result.totals.failures > 0 && <Tag color="error">{result.totals.failures} failed</Tag>}
+              {result.totals.failures > 0 && (
+                <Tag color="error">{result.totals.failures} failed</Tag>
+              )}
               {result.totals.errors > 0 && <Tag color="error">{result.totals.errors} errors</Tag>}
-              {result.totals.skipped > 0 && <Tag color="warning">{result.totals.skipped} skipped</Tag>}
+              {result.totals.skipped > 0 && (
+                <Tag color="warning">{result.totals.skipped} skipped</Tag>
+              )}
               <Text type="secondary">{result.totals.time?.toFixed?.(2)}s</Text>
             </>
           )}
