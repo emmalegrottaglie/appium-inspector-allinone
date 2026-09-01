@@ -69,9 +69,15 @@ scratch and are ignored via `.git/info/exclude` (not committed).
   - **`simplify`** — for reuse/cleanup passes after a feature lands.
     Prefer these over ad-hoc greps/manual reasoning when a skill covers the task.
 - **Verify before you commit** (the standard loop): `npm run build:electron`
-  passes → `npx eslint <changed files>` is error-free (warnings OK) →
-  self-review the diff (and ask the user to run `/code-review`) → **`verify`/`run`**
-  the app → then commit.
+  passes → `npm run lint` (oxlint) is error-free (warnings OK) and
+  `npm run format` (oxfmt) applied → self-review the diff (and ask the user to
+  run `/code-review`) → **`verify`/`run`** the app → then commit.
+  - **Lint/format tooling is oxc** (upstream migrated off eslint/prettier in
+    Aug 2026, PRs #3076/#3081): `oxlint -c oxlint.config.mjs` and
+    `oxfmt -c oxfmt.config.mjs`. On Windows `autocrlf=true`, so `oxfmt .` reports
+    ~200 files (CRLF vs LF) but git commits LF — only your real reflows land; the
+    CI **Lint & Format** job runs oxfmt/oxfmt `--check` on Linux (LF), where only
+    never-formatted files fail. Run `npm run format` before committing new files.
 - **Only commit/push when asked.** Commit messages end with the
   `Co-Authored-By: Claude ...` trailer.
 
@@ -317,7 +323,8 @@ git diff --name-only --diff-filter=U                     # list conflicts
 ## 10. Verification checklist (before declaring done)
 
 - [ ] `npm run build:electron` passes.
-- [ ] `npx eslint <changed files>` has **0 errors** (warnings OK).
+- [ ] `npm run lint` (oxlint) has **0 errors** (warnings OK); `npm run format`
+      (oxfmt) applied to any new/changed files.
 - [ ] Feature strings present in the built bundle (`dist/renderer/assets/*.js`):
       `Raw Command`, `Save test as a file`, `scrollIntoView`, `Languages & runtimes`.
 - [ ] After an upstream merge: `git rev-list --left-right --count upstream/main...HEAD`
