@@ -22,9 +22,7 @@ const winCmd = (name) => (isWin ? `${name}.cmd` : name);
 export function setupRuntimesIPC() {
   ipcMain.handle('runtimes:detect', () => detectRuntimes());
   ipcMain.handle('runtimes:installRubyGems', (evt) => installRubyGems(evt.sender));
-  ipcMain.handle('runtimes:installJsDeps', (evt, {workingDir} = {}) =>
-    installJsDeps(evt.sender, workingDir),
-  );
+  ipcMain.handle('runtimes:installJsDeps', (evt, {workingDir} = {}) => installJsDeps(evt.sender, workingDir));
 }
 
 // .exe (ruby/node) spawn fine under shell:false; .cmd shims (npm/gem/oxygen)
@@ -73,11 +71,7 @@ function installJsDeps(sender, workingDir) {
   // ESM `import {remote} from 'webdriverio'` needs the dir marked as a module.
   const pkgJson = join(workingDir, 'package.json');
   if (!existsSync(pkgJson)) {
-    writeFileSync(
-      pkgJson,
-      JSON.stringify({name: 'appium-tests', private: true, type: 'module'}, null, 2),
-      'utf8',
-    );
+    writeFileSync(pkgJson, JSON.stringify({name: 'appium-tests', private: true, type: 'module'}, null, 2), 'utf8');
   }
   const command = winCmd('npm');
   const {runId} = startProcess(sender, {

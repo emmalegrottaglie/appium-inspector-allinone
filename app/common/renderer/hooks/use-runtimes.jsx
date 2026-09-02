@@ -60,10 +60,7 @@ export function useRuntimes() {
   }, []);
 
   const installRubyGems = useCallback(() => start('ruby', () => rt.installRubyGems()), [start]);
-  const installJsDeps = useCallback(
-    (workingDir) => start('js', () => rt.installJsDeps(workingDir)),
-    [start],
-  );
+  const installJsDeps = useCallback((workingDir) => start('js', () => rt.installJsDeps(workingDir)), [start]);
 
   return {runtimes, op, log, refresh, installRubyGems, installJsDeps};
 }

@@ -5,9 +5,10 @@ import ContextControlsGroup from './ContextControlsGroup.jsx';
 import DeviceControlsGroup from './DeviceControlsGroup.jsx';
 import DisplayControlsGroup from './DisplayControlsGroup.jsx';
 import GeneralControlsGroup from './GeneralControlsGroup.jsx';
-import styles from './Header.module.css';
 import SessionQuitControlsGroup from './SessionQuitControlsGroup.jsx';
 import SessionReloadButton from './SessionReloadButton.jsx';
+
+import styles from './Header.module.css';
 
 /**
  * Parent container for control buttons located in the application header.
@@ -38,7 +39,7 @@ const HeaderButtons = (props) => {
 
   return (
     <div className={styles.headerButtons}>
-      <Space size="middle">
+      <Space size="middle" wrap className={styles.headerButtonsSpace}>
         <DeviceControlsGroup
           driver={driver}
           applyClientMethod={applyClientMethod}

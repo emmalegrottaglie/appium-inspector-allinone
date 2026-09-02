@@ -1,9 +1,10 @@
-import {IconDownload, IconFiles, IconTag} from '@tabler/icons-react';
+import {IconChevronDown, IconChevronUp, IconDownload, IconFiles, IconTag} from '@tabler/icons-react';
 import {Button, Card, Flex, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {downloadFile} from '../../../../utils/file-handling.js';
 import {copyToClipboard} from '../../../../utils/other.js';
+
 import styles from './SelectedElement.module.css';
 
 /**
@@ -20,13 +21,19 @@ const SelectedElementPanelTitle = () => {
 };
 
 /**
- * Buttons shown in the selected element's wrapper card.
+ * Buttons shown in the selected element's wrapper card, plus (when panels
+ * are stacked) the toggle that collapses/expands the card body while keeping
+ * its header visible - the side-by-side layout already offers a full
+ * collapse via the Splitter divider.
  */
 const SelectedElementHeaderButtons = ({
   elementAttributesData,
   elementActionsDisabled,
   selectedElementId,
   applyClientMethod,
+  collapsible,
+  collapsed,
+  onToggleCollapse,
 }) => {
   const {t} = useTranslation();
 
@@ -61,6 +68,15 @@ const SelectedElementHeaderButtons = ({
           onClick={() => downloadElementScreenshot(selectedElementId)}
         />
       </Tooltip>
+      {collapsible && (
+        <Tooltip title={t(collapsed ? 'Expand Panel' : 'Collapse Panel')}>
+          <Button
+            type="text"
+            icon={collapsed ? <IconChevronDown size={18} /> : <IconChevronUp size={18} />}
+            onClick={onToggleCollapse}
+          />
+        </Tooltip>
+      )}
     </span>
   );
 };
@@ -73,6 +89,9 @@ const SelectedElementCard = ({
   selectedElementId,
   elementActionsDisabled,
   elementAttributesData,
+  collapsible,
+  collapsed,
+  onToggleCollapse,
   children,
 }) => (
   <Card
@@ -84,10 +103,13 @@ const SelectedElementCard = ({
         elementActionsDisabled={elementActionsDisabled}
         selectedElementId={selectedElementId}
         applyClientMethod={applyClientMethod}
+        collapsible={collapsible}
+        collapsed={collapsed}
+        onToggleCollapse={onToggleCollapse}
       />
     }
   >
-    {children}
+    {!collapsed && children}
   </Card>
 );
 

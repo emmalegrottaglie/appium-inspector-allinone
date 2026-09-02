@@ -165,16 +165,12 @@ const RawCommand = (props) => {
               spellCheck={false}
               className={styles.mono}
             />
-            {bodyError && (
-              <Alert type="error" message={bodyError} showIcon className={styles.bodyError} />
-            )}
+            {bodyError && <Alert type="error" message={bodyError} showIcon className={styles.bodyError} />}
           </div>
         )}
 
         <div className={styles.responseArea}>
-          {!response && (
-            <Text type="secondary">Compose a request and send it to see the response here.</Text>
-          )}
+          {!response && <Text type="secondary">Compose a request and send it to see the response here.</Text>}
           {response && (
             <Space direction="vertical" size="small" className={styles.fill}>
               <Space size="small">

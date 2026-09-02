@@ -36,8 +36,7 @@ const NPM_SPEC = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[a-z0-9
 
 // GitHub source must be an https github.com repo URL, optional #ref. https only:
 // blocks git://, ssh, and arbitrary hosts.
-const GITHUB_URL =
-  /^https:\/\/github\.com\/[a-z0-9](?:[a-z0-9-]){0,38}\/[a-z0-9._-]{1,100}(#[\w./-]+)?$/i;
+const GITHUB_URL = /^https:\/\/github\.com\/[a-z0-9](?:[a-z0-9-]){0,38}\/[a-z0-9._-]{1,100}(#[\w./-]+)?$/i;
 
 function assertType(type) {
   if (!EXT_TYPES.has(type)) {
@@ -128,10 +127,7 @@ function spawnExt(sender, type, label, args) {
     });
 }
 
-async function install(
-  sender,
-  {type, name, source = null, packageName = null, allowThirdParty = false},
-) {
+async function install(sender, {type, name, source = null, packageName = null, allowThirdParty = false}) {
   assertType(type);
 
   // --- official install: bare short-name, no --source ---

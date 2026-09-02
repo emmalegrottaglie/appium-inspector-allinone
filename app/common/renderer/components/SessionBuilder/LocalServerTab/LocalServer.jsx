@@ -4,6 +4,7 @@ import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {useAppiumServer} from '../../../hooks/use-appium-server.jsx';
+
 import styles from './LocalServer.module.css';
 
 const {Text} = Typography;
@@ -16,8 +17,7 @@ const STATUS_COLOR = {
   error: 'error',
 };
 
-const isLoopback = (host) =>
-  host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '';
+const isLoopback = (host) => host === '127.0.0.1' || host === 'localhost' || host === '::1' || host === '';
 
 /**
  * Control panel for the app-managed (bundled or system) Appium server.
@@ -137,9 +137,7 @@ const LocalServer = () => {
             {t('Server Log')}
           </Text>
           <pre className={styles.log} ref={logRef}>
-            {log.length === 0
-              ? 'Server output will appear here once started.'
-              : log.map((l) => l.chunk).join('')}
+            {log.length === 0 ? 'Server output will appear here once started.' : log.map((l) => l.chunk).join('')}
           </pre>
         </div>
       </Space>

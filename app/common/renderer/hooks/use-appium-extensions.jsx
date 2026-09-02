@@ -82,8 +82,7 @@ export function useAppiumExtensions(type) {
   );
 
   const install = useCallback(
-    (opts) =>
-      ext.install({type, ...opts}).then((r) => handleResult(r, {kind: 'install', name: opts.name})),
+    (opts) => ext.install({type, ...opts}).then((r) => handleResult(r, {kind: 'install', name: opts.name})),
     [type, handleResult],
   );
   const update = useCallback(

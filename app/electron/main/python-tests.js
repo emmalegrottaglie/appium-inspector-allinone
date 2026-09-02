@@ -81,9 +81,7 @@ export function setupPythonTestsIPC() {
   ipcMain.handle('python:pickWorkingDir', () => pickWorkingDir());
   ipcMain.handle('python:listTests', (_evt, dir) => listTests(dir));
   ipcMain.handle('python:readFile', (_evt, dir, relPath) => readTestFile(dir, relPath));
-  ipcMain.handle('python:saveFile', (_evt, dir, relPath, content) =>
-    saveTestFile(dir, relPath, content),
-  );
+  ipcMain.handle('python:saveFile', (_evt, dir, relPath, content) => saveTestFile(dir, relPath, content));
   ipcMain.handle('python:run', (evt, payload) => runTests(evt.sender, payload));
 }
 

@@ -8,8 +8,9 @@ import SavedGestures from './GesturesTab/SavedGestures.jsx';
 import RawCommand from './RawCommandTab/RawCommand.jsx';
 import Recorder from './RecorderTab/Recorder.jsx';
 import SessionInfo from './SessionInfoTab/SessionInfo.jsx';
-import styles from './SessionInspector.module.css';
 import SourceTab from './SourceTab/SourceTab.jsx';
+
+import styles from './SessionInspector.module.css';
 
 /**
  * Tabs shown to the right of the screenshot on the Session Inspector screen.
@@ -42,11 +43,7 @@ const SessionInspectorTabs = (props) => {
       label: t('Gestures'),
       key: INSPECTOR_TABS.GESTURES,
       disabled: !showScreenshot,
-      children: isGestureEditorVisible ? (
-        <GestureEditor {...props} />
-      ) : (
-        <SavedGestures {...props} />
-      ),
+      children: isGestureEditorVisible ? <GestureEditor {...props} /> : <SavedGestures {...props} />,
     },
     {
       label: t('Recorder'),

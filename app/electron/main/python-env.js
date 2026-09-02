@@ -59,8 +59,7 @@ function validatePkg(spec) {
 
 async function detectInterpreter() {
   const {path, source} = await resolveBinary('python');
-  const probe =
-    'import sys,json;print(json.dumps({"v":list(sys.version_info[:3]),"exe":sys.executable}))';
+  const probe = 'import sys,json;print(json.dumps({"v":list(sys.version_info[:3]),"exe":sys.executable}))';
   const {stdout, code, error} = await collectProcess({command: path, args: ['-c', probe]});
   if (error || code !== 0) {
     return {found: false, source, error: error || `python exited with code ${code}`};
@@ -96,7 +95,7 @@ async function installedPackages() {
   if (code !== 0) {
     return {};
   }
-  let list = [];
+  let list;
   try {
     list = JSON.parse(stdout.trim().split('\n').pop());
   } catch {
@@ -139,9 +138,7 @@ async function installDeps(sender, {packages = REQUIRED_PACKAGES, allowThirdPart
   if (!venvExists()) {
     return {status: 'venv_missing'};
   }
-  const requiredBases = new Set(
-    [...REQUIRED_PACKAGES, ...ROBOT_PACKAGES].map((p) => p.toLowerCase().split('==')[0]),
-  );
+  const requiredBases = new Set([...REQUIRED_PACKAGES, ...ROBOT_PACKAGES].map((p) => p.toLowerCase().split('==')[0]));
   for (const spec of packages) {
     validatePkg(spec);
     const base = spec.toLowerCase().split('==')[0];

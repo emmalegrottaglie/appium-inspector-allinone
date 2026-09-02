@@ -14,6 +14,7 @@ import {useTranslation} from 'react-i18next';
 import {usePythonEnv} from '../../../hooks/use-python-env.jsx';
 import {usePythonTests} from '../../../hooks/use-python-tests.jsx';
 import {useRuntimes} from '../../../hooks/use-runtimes.jsx';
+
 import styles from './PythonPanel.module.css';
 
 // Mirror of langOf() in python-tests.js — pick the runner from the file type.
@@ -39,10 +40,7 @@ const {TextArea} = Input;
 const OUTCOME_COLOR = {passed: 'success', failed: 'error', error: 'error', skipped: 'warning'};
 
 // Imports the scaffold always emits (webdriver + the options class it uses).
-const BASE_IMPORTS = [
-  'from appium import webdriver',
-  'from appium.options.android import UiAutomator2Options',
-];
+const BASE_IMPORTS = ['from appium import webdriver', 'from appium.options.android import UiAutomator2Options'];
 
 // Imports added only when the corresponding symbol appears in the steps. This
 // covers the common recorder output: element finds (AppiumBy) and W3C gestures
@@ -64,9 +62,9 @@ const REQUIRED_IMPORTS = [...BASE_IMPORTS, 'from appium.webdriver.common.appiumb
 // Pick the imports a given test body actually needs (word-boundary match).
 function importsForBody(body) {
   const text = body.join('\n');
-  const conditional = CONDITIONAL_IMPORTS.filter(([sym]) =>
-    new RegExp(`\\b${sym}\\b`).test(text),
-  ).map(([, imp]) => imp);
+  const conditional = CONDITIONAL_IMPORTS.filter(([sym]) => new RegExp(`\\b${sym}\\b`).test(text)).map(
+    ([, imp]) => imp,
+  );
   return [...BASE_IMPORTS, ...conditional];
 }
 
@@ -155,20 +153,9 @@ const EnvStatus = ({status}) => {
 /** Python environment setup + pytest runner. Desktop-only. */
 const PythonPanel = () => {
   const {t} = useTranslation();
-  const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage, installRobot} =
-    usePythonEnv();
-  const {
-    workingDir,
-    files,
-    run,
-    runLog,
-    result,
-    pickDir,
-    refreshFiles,
-    readFile,
-    saveFile,
-    runTests,
-  } = usePythonTests();
+  const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage, installRobot} = usePythonEnv();
+  const {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests} =
+    usePythonTests();
   const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
   const [keyword, setKeyword] = useState('');
   const [panelTab, setPanelTab] = useState('tests'); // 'environment' | 'tests'
@@ -285,9 +272,7 @@ const PythonPanel = () => {
   const finished = !!run && run.status !== 'running';
   const structured = result?.totals;
   const structuredTotal = structured ? result.totals.tests || 0 : 0;
-  const structuredFailed = structured
-    ? (result.totals.failures || 0) + (result.totals.errors || 0)
-    : 0;
+  const structuredFailed = structured ? (result.totals.failures || 0) + (result.totals.errors || 0) : 0;
   let resultBanner = null;
   if (running) {
     resultBanner = <Tag color="processing">{t('RUNNING…')}</Tag>;
@@ -305,9 +290,7 @@ const PythonPanel = () => {
       // process exited OK — a non-zero exit with 0 reported failures (e.g. a
       // fixture/teardown crash) is still a failure. Exit-code langs (ruby/js):
       // pass iff the process exited 0.
-      const passed = structured
-        ? structuredFailed === 0 && run.status !== 'error'
-        : run.status === 'done';
+      const passed = structured ? structuredFailed === 0 && run.status !== 'error' : run.status === 'done';
       resultBanner = passed ? (
         <Tag color="success">{t('PASSED')}</Tag>
       ) : (
@@ -324,12 +307,7 @@ const PythonPanel = () => {
       <section className={styles.card}>
         <Space className={styles.cardHeader}>
           <Text strong>{t('Environment')}</Text>
-          <Button
-            size="small"
-            icon={<IconRefresh size={14} />}
-            onClick={refresh}
-            disabled={settingUp}
-          />
+          <Button size="small" icon={<IconRefresh size={14} />} onClick={refresh} disabled={settingUp} />
         </Space>
         <EnvStatus status={status} />
         <Space className={styles.actions}>
@@ -392,12 +370,7 @@ const PythonPanel = () => {
           {status?.robotReady ? (
             <Text type="success">{t('ready')} (.robot)</Text>
           ) : (
-            <Button
-              size="small"
-              onClick={installRobot}
-              loading={settingUp}
-              disabled={!status?.venv}
-            >
+            <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
               {t('Add Robot Framework')}
             </Button>
           )}
@@ -406,9 +379,7 @@ const PythonPanel = () => {
 
         <Space wrap>
           <Tag color={runtimes?.ruby?.found ? 'success' : 'default'}>Ruby</Tag>
-          <Text type="secondary">
-            {runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}
-          </Text>
+          <Text type="secondary">{runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}</Text>
           <Button
             size="small"
             onClick={installRubyGems}
@@ -421,9 +392,7 @@ const PythonPanel = () => {
 
         <Space wrap>
           <Tag color={runtimes?.node?.found ? 'success' : 'default'}>Node / WebdriverIO</Tag>
-          <Text type="secondary">
-            {runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}
-          </Text>
+          <Text type="secondary">{runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}</Text>
           <Button
             size="small"
             onClick={() => installJsDeps(workingDir)}
@@ -453,9 +422,7 @@ const PythonPanel = () => {
           <Button icon={<IconFolderOpen size={16} />} onClick={pickDir}>
             {t('Choose working directory')}
           </Button>
-          {workingDir && (
-            <Button size="small" icon={<IconRefresh size={14} />} onClick={refreshFiles} />
-          )}
+          {workingDir && <Button size="small" icon={<IconRefresh size={14} />} onClick={refreshFiles} />}
         </Space>
         {workingDir ? (
           <Text type="secondary" className={styles.dir}>
@@ -559,13 +526,10 @@ const PythonPanel = () => {
             />
             <Text type="secondary" className={styles.hint}>
               {isPyFile
-                ? t(
-                    'Format wraps recorded steps with imports, a test function, and setup/teardown.',
-                  )
-                : t(
-                    'Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.',
-                    {lang: openLang},
-                  )}
+                ? t('Format wraps recorded steps with imports, a test function, and setup/teardown.')
+                : t('Runs with the {{lang}} toolchain. Generate this file from the Recorder’s Save As.', {
+                    lang: openLang,
+                  })}
             </Text>
           </div>
         )}
@@ -592,9 +556,7 @@ const PythonPanel = () => {
             {t('Run all tests')}
           </Button>
         </Space.Compact>
-        {!ready && workingDir && (
-          <Text type="warning">{t('Set up the environment before running tests.')}</Text>
-        )}
+        {!ready && workingDir && <Text type="warning">{t('Set up the environment before running tests.')}</Text>}
 
         <Space wrap align="center" className={styles.resultRow}>
           <Text strong>{t('Result')}</Text>
@@ -602,13 +564,9 @@ const PythonPanel = () => {
           {structured && structuredTotal > 0 && (
             <>
               <Tag color="success">{result.totals.passed} passed</Tag>
-              {result.totals.failures > 0 && (
-                <Tag color="error">{result.totals.failures} failed</Tag>
-              )}
+              {result.totals.failures > 0 && <Tag color="error">{result.totals.failures} failed</Tag>}
               {result.totals.errors > 0 && <Tag color="error">{result.totals.errors} errors</Tag>}
-              {result.totals.skipped > 0 && (
-                <Tag color="warning">{result.totals.skipped} skipped</Tag>
-              )}
+              {result.totals.skipped > 0 && <Tag color="warning">{result.totals.skipped} skipped</Tag>}
               <Text type="secondary">{result.totals.time?.toFixed?.(2)}s</Text>
             </>
           )}
