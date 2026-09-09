@@ -28,7 +28,8 @@ async function main () {
   try {
 ${this.indent(code, 4)}
   } finally {
-    await driver.deleteSession();
+    // Never let a teardown failure replace the error that actually failed the test.
+    await driver.deleteSession().catch((err) => console.error('deleteSession failed:', err));
   }
 }
 

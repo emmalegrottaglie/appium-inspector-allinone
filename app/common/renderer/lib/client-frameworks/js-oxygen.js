@@ -80,7 +80,11 @@ ${code}`;
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    // Oxygen wraps WebdriverIO, whose executeScript requires both parameters.
+    // getDriver() exposes the underlying wdio driver (see codeFor_findAndAssign
+    // below: "oxygen internally uses wdio"), whose executeScript requires both
+    // parameters. Passing an explicit empty args array is correct there and
+    // harmless if Oxygen's own wrapper treats args as optional. Unverified
+    // against a live Oxygen run — oxygen-cli is not a dependency of this repo.
     return `${this.type}.getDriver().executeScript(${JSON.stringify(scriptCmd)}, []);`;
   }
 
