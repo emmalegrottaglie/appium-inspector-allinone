@@ -43,6 +43,16 @@ describe('client-frameworks', function () {
         expect(boilerplate()).toContain("console.error('deleteSession failed:', err)");
       });
 
+      it('should fail the run when only teardown fails', function () {
+        // The teardown catch must not swallow the failure outright: a body that
+        // passed still has to report FAILED if the session could not be ended,
+        // otherwise the badge shows PASSED beside a teardown stack trace.
+        // Slice out just the teardown handler: the outer main().catch sets an exit
+        // code too, so an unbounded slice would pass with the teardown one removed.
+        const teardownCatch = boilerplate().split('deleteSession().catch')[1].split('main().catch')[0];
+        expect(teardownCatch).toContain('process.exitCode = 1');
+      });
+
       it('should place the test body inside the try block', function () {
         expect(boilerplate()).toContain('    await driver.pause(1);');
       });

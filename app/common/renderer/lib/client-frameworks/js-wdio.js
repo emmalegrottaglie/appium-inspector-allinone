@@ -28,8 +28,13 @@ async function main () {
   try {
 ${this.indent(code, 4)}
   } finally {
-    // Never let a teardown failure replace the error that actually failed the test.
-    await driver.deleteSession().catch((err) => console.error('deleteSession failed:', err));
+    await driver.deleteSession().catch((err) => {
+      // Report a teardown failure without replacing the error that failed the test,
+      // and still fail the run (a body that passed must not report success when
+      // the session could not be ended).
+      console.error('deleteSession failed:', err);
+      process.exitCode = 1;
+    });
   }
 }
 

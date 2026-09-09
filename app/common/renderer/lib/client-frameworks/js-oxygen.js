@@ -81,7 +81,7 @@ ${code}`;
 
   codeFor_executeScriptNoArgs(scriptCmd) {
     // getDriver() exposes the underlying wdio driver (see codeFor_findAndAssign
-    // below: "oxygen internally uses wdio"), whose executeScript requires both
+    // above: "oxygen internally uses wdio"), whose executeScript requires both
     // parameters. Passing an explicit empty args array is correct there and
     // harmless if Oxygen's own wrapper treats args as optional. Unverified
     // against a live Oxygen run — oxygen-cli is not a dependency of this repo.
