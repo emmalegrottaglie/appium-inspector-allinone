@@ -25,11 +25,17 @@ async function main () {
     path: "${this.serverUrlParts.path}",
     capabilities: caps
   });
-${this.indent(code, 2)}
-  await driver.deleteSession();
+  try {
+${this.indent(code, 4)}
+  } finally {
+    await driver.deleteSession();
+  }
 }
 
-main().catch(console.log);`;
+main().catch((err) => {
+  console.error(err);
+  process.exitCode = 1;
+});`;
   }
 
   addComment(comment) {
@@ -97,7 +103,10 @@ main().catch(console.log);`;
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `await driver.executeScript(${JSON.stringify(scriptCmd)});`;
+    // WebdriverIO's executeScript requires both parameters (script, args) — it
+    // rejects a single-argument call with "Wrong parameters applied for
+    // executeScript", so pass an explicit empty args array.
+    return `await driver.executeScript(${JSON.stringify(scriptCmd)}, []);`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {

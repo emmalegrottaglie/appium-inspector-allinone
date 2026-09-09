@@ -80,7 +80,8 @@ ${code}`;
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `${this.type}.getDriver().executeScript(${JSON.stringify(scriptCmd)});`;
+    // Oxygen wraps WebdriverIO, whose executeScript requires both parameters.
+    return `${this.type}.getDriver().executeScript(${JSON.stringify(scriptCmd)}, []);`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
