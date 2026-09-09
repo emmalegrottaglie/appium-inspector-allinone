@@ -88,6 +88,20 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
 
 ### Fixed
 
+- **Generated JS/TS tests failed at the first `mobile:` command.** The
+  WebdriverIO generator emitted `driver.executeScript("mobile: ...")` with a
+  single argument, but WebdriverIO requires both parameters and rejects that call
+  with `Wrong parameters applied for executeScript`. Argument-less scripts now
+  emit an explicit empty args array. (Same fix applied to the Oxygen generator,
+  which wraps WebdriverIO.) This only surfaced once the fork could actually *run*
+  exported code — upstream never executes it.
+- **A failing JS/TS test reported PASSED.** The generated boilerplate ended in
+  `main().catch(console.log)`, which swallowed the error and let the process exit
+  `0`, so the exit-code-based badge showed a green **PASSED** next to a stack
+  trace. The wrapper now logs to stderr and sets a non-zero exit code, so the
+  badge reads **FAILED**. The test body is also wrapped in `try/finally` around
+  `driver.deleteSession()`, so a mid-test failure no longer strands the session
+  and leaves the device parked on whatever screen it reached.
 - **`.cmd` spawn crash (Node 20+ / Windows).** Spawning a `.cmd` shim
   (`npm`/`gem`/`oxygen`) with `shell:false` throws `EINVAL` synchronously, which
   was rejecting the whole runtime-detection `Promise.all` (so Ruby/Node showed as
