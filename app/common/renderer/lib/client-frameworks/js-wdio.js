@@ -19,10 +19,10 @@ import {remote} from 'webdriverio';
 async function main () {
   const caps = ${JSON.stringify(this.caps, null, 2)}
   const driver = await remote({
-    protocol: "${this.serverUrlParts.protocol}",
-    hostname: "${this.serverUrlParts.host}",
-    port: ${this.serverUrlParts.port},
-    path: "${this.serverUrlParts.path}",
+    protocol: ${this.quote(this.serverUrlParts.protocol)},
+    hostname: ${this.quote(this.serverUrlParts.host)},
+    port: ${Number(this.serverUrlParts.port)},
+    path: ${this.quote(this.serverUrlParts.path)},
     capabilities: caps
   });
   try {
@@ -66,9 +66,9 @@ main().catch((err) => {
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `const ${localVar} = await driver.$$(${JSON.stringify(`${strategy}:${locator}`)});`;
+      return `const ${localVar} = await driver.$$(${this.quote(`${strategy}:${locator}`)});`;
     } else {
-      return `const ${localVar} = await driver.$(${JSON.stringify(`${strategy}:${locator}`)});`;
+      return `const ${localVar} = await driver.$(${this.quote(`${strategy}:${locator}`)});`;
     }
   }
 
@@ -81,7 +81,7 @@ main().catch((err) => {
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `await ${this.getVarName(varName, varIndex)}.addValue(${JSON.stringify(text)});`;
+    return `await ${this.getVarName(varName, varIndex)}.addValue(${this.quote(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -112,11 +112,11 @@ main().catch((err) => {
     // WebdriverIO's executeScript requires both parameters (script, args) — it
     // rejects a single-argument call with "Wrong parameters applied for
     // executeScript", so pass an explicit empty args array.
-    return `await driver.executeScript(${JSON.stringify(scriptCmd)}, []);`;
+    return `await driver.executeScript(${this.quote(scriptCmd)}, []);`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
-    return `await driver.executeScript(${JSON.stringify(scriptCmd)}, ${JSON.stringify(jsonArg)});`;
+    return `await driver.executeScript(${this.quote(scriptCmd)}, ${JSON.stringify(jsonArg)});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
@@ -162,7 +162,7 @@ main().catch((err) => {
   }
 
   codeFor_getLogs(varNameIgnore, varIndexIgnore, logType) {
-    return `let logs = await driver.getLogs("${logType}");`;
+    return `let logs = await driver.getLogs(${this.quote(logType)});`;
   }
 
   // Context
@@ -176,7 +176,7 @@ main().catch((err) => {
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `await driver.switchAppiumContext("${name}");`;
+    return `await driver.switchAppiumContext(${this.quote(name)});`;
   }
 
   // Device Interaction
@@ -198,7 +198,7 @@ main().catch((err) => {
   }
 
   codeFor_setOrientation(varNameIgnore, varIndexIgnore, orientation) {
-    return `await driver.setOrientation("${orientation}");`;
+    return `await driver.setOrientation(${this.quote(orientation)});`;
   }
 
   codeFor_getGeoLocation() {
@@ -216,47 +216,47 @@ main().catch((err) => {
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `await driver.installApp("${app}");`;
+    return `await driver.installApp(${this.quote(app)});`;
   }
 
   codeFor_isAppInstalled(varNameIgnore, varIndexIgnore, app) {
-    return `let isAppInstalled = await driver.isAppInstalled("${app}");`;
+    return `let isAppInstalled = await driver.isAppInstalled(${this.quote(app)});`;
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `await driver.activateApp("${app}");`;
+    return `await driver.activateApp(${this.quote(app)});`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `await driver.terminateApp("${app}");`;
+    return `await driver.terminateApp(${this.quote(app)});`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `await driver.removeApp("${app}")`;
+    return `await driver.removeApp(${this.quote(app)})`;
   }
 
   codeFor_queryAppState(varNameIgnore, varIndexIgnore, app) {
-    return `let appState = await driver.queryAppState("${app}");`;
+    return `let appState = await driver.queryAppState(${this.quote(app)});`;
   }
 
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `await driver.pushFile("${pathToInstallTo}", "${fileContentString}");`;
+    return `await driver.pushFile(${this.quote(pathToInstallTo)}, ${this.quote(fileContentString)});`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `let fileBase64 = await driver.pullFile("${pathToPullFrom}");`;
+    return `let fileBase64 = await driver.pullFile(${this.quote(pathToPullFrom)});`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `let folderBase64 = await driver.pullFolder("${folderToPullFrom}");`;
+    return `let folderBase64 = await driver.pullFolder(${this.quote(folderToPullFrom)});`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `await driver.navigateTo('${url}');`;
+    return `await driver.navigateTo(${this.quote(url)});`;
   }
 
   codeFor_getUrl() {
@@ -288,7 +288,7 @@ main().catch((err) => {
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `await driver.switchToWindow("${handle}");`;
+    return `await driver.switchToWindow(${this.quote(handle)});`;
   }
 
   codeFor_getWindowHandles() {
@@ -296,6 +296,6 @@ main().catch((err) => {
   }
 
   codeFor_createWindow(varNameIgnore, varIndexIgnore, type) {
-    return `let newWindow = await driver.createWindow("${type}");`;
+    return `let newWindow = await driver.createWindow(${this.quote(type)});`;
   }
 }

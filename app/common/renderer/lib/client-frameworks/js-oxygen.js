@@ -21,7 +21,7 @@ export default class JsOxygenFramework extends CommonClientFramework {
 // oxygen <file>.js
 
 const caps = ${JSON.stringify(this.caps, null, 2)};
-const appiumUrl = "${this.serverUrl}";
+const appiumUrl = ${this.quote(this.serverUrl)};
 ${this.type}.init(caps, appiumUrl);
 
 ${code}`;
@@ -49,9 +49,9 @@ ${code}`;
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `const ${localVar} = ${this.type}.findElements(${JSON.stringify(`${strategy}:${locator}`)});`;
+      return `const ${localVar} = ${this.type}.findElements(${this.quote(`${strategy}:${locator}`)});`;
     } else {
-      return `const ${localVar} = ${this.type}.findElement(${JSON.stringify(`${strategy}:${locator}`)});`;
+      return `const ${localVar} = ${this.type}.findElement(${this.quote(`${strategy}:${locator}`)});`;
     }
   }
 
@@ -64,7 +64,7 @@ ${code}`;
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.type}.type(${this.getVarName(varName, varIndex)}, ${JSON.stringify(text)});`;
+    return `${this.type}.type(${this.getVarName(varName, varIndex)}, ${this.quote(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -85,11 +85,11 @@ ${code}`;
     // parameters. Passing an explicit empty args array is correct there and
     // harmless if Oxygen's own wrapper treats args as optional. Unverified
     // against a live Oxygen run — oxygen-cli is not a dependency of this repo.
-    return `${this.type}.getDriver().executeScript(${JSON.stringify(scriptCmd)}, []);`;
+    return `${this.type}.getDriver().executeScript(${this.quote(scriptCmd)}, []);`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
-    return `${this.type}.getDriver().executeScript(${JSON.stringify(scriptCmd)}, ${JSON.stringify(jsonArg)});`;
+    return `${this.type}.getDriver().executeScript(${this.quote(scriptCmd)}, ${JSON.stringify(jsonArg)});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
@@ -135,7 +135,7 @@ ${code}`;
   }
 
   codeFor_getLogs(varNameIgnore, varIndexIgnore, logType) {
-    return `let logs = ${this.type}.getDriver().getLogs("${logType}");`;
+    return `let logs = ${this.type}.getDriver().getLogs(${this.quote(logType)});`;
   }
 
   // Context
@@ -149,7 +149,7 @@ ${code}`;
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `${this.type}.setContext("${name}");`;
+    return `${this.type}.setContext(${this.quote(name)});`;
   }
 
   // Device Interaction
@@ -171,7 +171,7 @@ ${code}`;
   }
 
   codeFor_setOrientation(varNameIgnore, varIndexIgnore, orientation) {
-    return `${this.type}.getDriver().setOrientation("${orientation}");`;
+    return `${this.type}.getDriver().setOrientation(${this.quote(orientation)});`;
   }
 
   codeFor_getGeoLocation() {
@@ -189,47 +189,47 @@ ${code}`;
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `${this.type}.installApp("${app}");`;
+    return `${this.type}.installApp(${this.quote(app)});`;
   }
 
   codeFor_isAppInstalled(varNameIgnore, varIndexIgnore, app) {
-    return `let isAppInstalled = ${this.type}.isAppInstalled("${app}");`;
+    return `let isAppInstalled = ${this.type}.isAppInstalled(${this.quote(app)});`;
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `${this.type}.getDriver().activateApp("${app}");`;
+    return `${this.type}.getDriver().activateApp(${this.quote(app)});`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `${this.type}.getDriver().terminateApp("${app}");`;
+    return `${this.type}.getDriver().terminateApp(${this.quote(app)});`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `${this.type}.removeApp("${app}")`;
+    return `${this.type}.removeApp(${this.quote(app)})`;
   }
 
   codeFor_queryAppState(varNameIgnore, varIndexIgnore, app) {
-    return `let appState = ${this.type}.getDriver().queryAppState("${app}");`;
+    return `let appState = ${this.type}.getDriver().queryAppState(${this.quote(app)});`;
   }
 
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `${this.type}.getDriver().pushFile("${pathToInstallTo}", "${fileContentString}");`;
+    return `${this.type}.getDriver().pushFile(${this.quote(pathToInstallTo)}, ${this.quote(fileContentString)});`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `let fileBase64 = ${this.type}.getDriver().pullFile("${pathToPullFrom}");`;
+    return `let fileBase64 = ${this.type}.getDriver().pullFile(${this.quote(pathToPullFrom)});`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `let fileBase64 = ${this.type}.getDriver().pullFolder("${folderToPullFrom}");`;
+    return `let fileBase64 = ${this.type}.getDriver().pullFolder(${this.quote(folderToPullFrom)});`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `${this.type}.open("${url}");`;
+    return `${this.type}.open(${this.quote(url)});`;
   }
 
   codeFor_getUrl() {
@@ -261,7 +261,7 @@ ${code}`;
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `${this.type}.selectWindow("${handle}");`;
+    return `${this.type}.selectWindow(${this.quote(handle)});`;
   }
 
   codeFor_getWindowHandles() {
@@ -269,6 +269,6 @@ ${code}`;
   }
 
   codeFor_createWindow(varNameIgnore, varIndexIgnore, type) {
-    return `let newWindow = await ${this.type}.getDriver().createWindow("${type}");`;
+    return `let newWindow = await ${this.type}.getDriver().createWindow(${this.quote(type)});`;
   }
 }

@@ -7,16 +7,18 @@ export default class JavaFramework extends CommonClientFramework {
   static refractorLib = refractorJava;
 
   getJavaVal(jsonVal) {
-    if (Array.isArray(jsonVal)) {
+    if (jsonVal === null) {
+      return 'null';
+    } else if (Array.isArray(jsonVal)) {
       const convertedItems = jsonVal.map((item) => this.getJavaVal(item));
       return `{${convertedItems.join(', ')}}`;
     } else if (typeof jsonVal === 'object') {
       const convertedItems = Object.entries(jsonVal)
         .filter(([, v]) => v !== undefined)
-        .map(([k, v]) => `Map.entry(${JSON.stringify(k)}, ${this.getJavaVal(v)})`);
+        .map(([k, v]) => `Map.entry(${this.quote(k)}, ${this.getJavaVal(v)})`);
       return `Map.ofEntries(${convertedItems.join(', ')})`;
     }
-    return JSON.stringify(jsonVal);
+    return typeof jsonVal === 'string' ? this.quote(jsonVal) : JSON.stringify(jsonVal);
   }
 
   getBoilerplateParams() {
@@ -44,7 +46,7 @@ export default class JavaFramework extends CommonClientFramework {
     })();
     const capStr = this.indent(
       Object.entries(this.caps)
-        .map(([k, v]) => `.amend(${JSON.stringify(k)}, ${this.getJavaVal(v)})`)
+        .map(([k, v]) => `.amend(${this.quote(k)}, ${this.getJavaVal(v)})`)
         .join('\n'),
       6,
     );
@@ -72,13 +74,9 @@ export default class JavaFramework extends CommonClientFramework {
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `WebElements ${localVar} = driver.findElements(AppiumBy.${
-        suffixMap[strategy]
-      }(${JSON.stringify(locator)}));`;
+      return `WebElements ${localVar} = driver.findElements(AppiumBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
     } else {
-      return `WebElement ${localVar} = driver.findElement(AppiumBy.${suffixMap[strategy]}(${JSON.stringify(
-        locator,
-      )}));`;
+      return `WebElement ${localVar} = driver.findElement(AppiumBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
     }
   }
 
@@ -98,7 +96,7 @@ export default class JavaFramework extends CommonClientFramework {
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.getVarName(varName, varIndex)}.sendKeys(${JSON.stringify(text)});`;
+    return `${this.getVarName(varName, varIndex)}.sendKeys(${this.quote(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -136,22 +134,23 @@ driver.perform(Arrays.asList(swipe));
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `driver.executeScript("${scriptCmd}");`;
+    return `driver.executeScript(${this.quote(scriptCmd)});`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
     // Java dictionary needs to use the Map.ofEntries(Map.entry() ...) syntax
-    return `driver.executeScript("${scriptCmd}", ${this.getJavaVal(jsonArg[0])});`;
+    return `driver.executeScript(${this.quote(scriptCmd)}, ${this.getJavaVal(jsonArg[0])});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
     try {
       const settings = Object.entries(settingsJson).map(
-        ([settingName, settingValue]) => `driver.setSetting("${settingName}", ${this.getJavaVal(settingValue)});`,
+        ([settingName, settingValue]) =>
+          `driver.setSetting(${this.quote(settingName)}, ${this.getJavaVal(settingValue)});`,
       );
       return settings.join('\n');
     } catch {
-      return `// Could not parse: ${JSON.stringify(settingsJson)}`;
+      return `// Could not parse: ${this.quote(JSON.stringify(settingsJson))}`;
     }
   }
 
@@ -203,7 +202,7 @@ var timeouts = Map.ofEntries(
   }
 
   codeFor_getLogs(varNameIgnore, varIndexIgnore, logType) {
-    return `var logEntries = driver.manage().logs().get("${logType}");`;
+    return `var logEntries = driver.manage().logs().get(${this.quote(logType)});`;
   }
 
   // Context
@@ -217,7 +216,7 @@ var timeouts = Map.ofEntries(
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `driver.context("${name}");`;
+    return `driver.context(${this.quote(name)});`;
   }
 
   // Device Interaction
@@ -239,7 +238,7 @@ var timeouts = Map.ofEntries(
   }
 
   codeFor_setOrientation(varNameIgnore, varIndexIgnore, orientation) {
-    return `driver.rotate("${orientation}");`;
+    return `driver.rotate(${this.quote(orientation)});`;
   }
 
   codeFor_getGeoLocation() {
@@ -257,47 +256,47 @@ var timeouts = Map.ofEntries(
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.installApp("${app}");`;
+    return `driver.installApp(${this.quote(app)});`;
   }
 
   codeFor_isAppInstalled(varNameIgnore, varIndexIgnore, app) {
-    return `var isAppInstalled = driver.isAppInstalled("${app}");`;
+    return `var isAppInstalled = driver.isAppInstalled(${this.quote(app)});`;
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.activateApp("${app}");`;
+    return `driver.activateApp(${this.quote(app)});`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.terminateApp("${app}");`;
+    return `driver.terminateApp(${this.quote(app)});`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.removeApp("${app}");`;
+    return `driver.removeApp(${this.quote(app)});`;
   }
 
   codeFor_queryAppState(varNameIgnore, varIndexIgnore, app) {
-    return `var appState = driver.queryAppState("${app}");`;
+    return `var appState = driver.queryAppState(${this.quote(app)});`;
   }
 
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `driver.pushFile("${pathToInstallTo}", ${fileContentString});`;
+    return `driver.pushFile(${this.quote(pathToInstallTo)}, ${this.quote(fileContentString)}.getBytes());`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `var fileBase64 = driver.pullFile("${pathToPullFrom}");`;
+    return `var fileBase64 = driver.pullFile(${this.quote(pathToPullFrom)});`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `var folderBase64 = driver.pullFolder("${folderToPullFrom}");`;
+    return `var folderBase64 = driver.pullFolder(${this.quote(folderToPullFrom)});`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `driver.get("${url}");`;
+    return `driver.get(${this.quote(url)});`;
   }
 
   codeFor_getUrl() {
@@ -329,7 +328,7 @@ var timeouts = Map.ofEntries(
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `driver.switchTo().window("${handle}");`;
+    return `driver.switchTo().window(${this.quote(handle)});`;
   }
 
   codeFor_getWindowHandles() {

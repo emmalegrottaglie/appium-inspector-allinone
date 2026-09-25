@@ -7,23 +7,37 @@ export default class RubyFramework extends CommonClientFramework {
   static refractorLang = 'ruby';
   static refractorLib = refractorRuby;
 
-  // Use this instead of JSON.stringify, as it puts quotes around dictionary keys
+  // Render any value as a single-quoted Ruby string literal. Values such as locators come
+  // from the app's page source, so they must not be able to run code in the generated test:
+  // double-quoted Ruby strings (what JSON.stringify produces) evaluate #{...} interpolation,
+  // while single-quoted ones only recognize the \\ and \' escapes.
+  rubyStr(value) {
+    return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+  }
+
+  // Use this instead of JSON.stringify, which would produce Ruby-invalid `null` and
+  // interpolating double-quoted strings
   getRubyVal(jsonVal) {
-    if (Array.isArray(jsonVal)) {
+    if (jsonVal === null) {
+      return 'nil';
+    } else if (Array.isArray(jsonVal)) {
       const convertedItems = jsonVal.map((item) => this.getRubyVal(item));
       return `[${convertedItems.join(', ')}]`;
     } else if (typeof jsonVal === 'object') {
+      // quoted symbol keys ('key': value) keep the keys symbols while escaping them
       const convertedItems = Object.entries(jsonVal)
         .filter(([, v]) => v !== undefined)
-        .map(([k, v]) => `${k}: ${this.getRubyVal(v)}`);
+        .map(([k, v]) => `${this.rubyStr(k)}: ${this.getRubyVal(v)}`);
       return `{${convertedItems.join(', ')}}`;
+    } else if (typeof jsonVal === 'string') {
+      return this.rubyStr(jsonVal);
     }
-    return JSON.stringify(jsonVal);
+    return String(jsonVal);
   }
 
   wrapWithBoilerplate(code) {
     const capStr = Object.entries(this.caps)
-      .map(([k, v]) => `caps[${JSON.stringify(k)}] = ${this.getRubyVal(v)}`)
+      .map(([k, v]) => `caps[${this.rubyStr(k)}] = ${this.getRubyVal(v)}`)
       .join('\n');
     return `# This sample code supports Appium Ruby lib core client >=5
 # gem install appium_lib_core
@@ -34,7 +48,7 @@ require 'appium_lib_core'
 caps = {}
 ${capStr}
 
-core = Appium::Core.for url: "${this.serverUrl}", caps: caps
+core = Appium::Core.for url: ${this.rubyStr(this.serverUrl)}, caps: caps
 driver = core.start_driver
 
 ${code}
@@ -62,9 +76,9 @@ driver.quit`;
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `${localVar} = driver.find_elements ${suffixMap[strategy]}, ${JSON.stringify(locator)}`;
+      return `${localVar} = driver.find_elements ${suffixMap[strategy]}, ${this.rubyStr(locator)}`;
     } else {
-      return `${localVar} = driver.find_element ${suffixMap[strategy]}, ${JSON.stringify(locator)}`;
+      return `${localVar} = driver.find_element ${suffixMap[strategy]}, ${this.rubyStr(locator)}`;
     }
   }
 
@@ -77,7 +91,7 @@ driver.quit`;
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.getVarName(varName, varIndex)}.send_keys ${JSON.stringify(text)}`;
+    return `${this.getVarName(varName, varIndex)}.send_keys ${this.rubyStr(text)}`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -106,11 +120,11 @@ driver.quit`;
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `driver.execute_script '${scriptCmd}'`;
+    return `driver.execute_script ${this.rubyStr(scriptCmd)}`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
-    return `driver.execute_script '${scriptCmd}', ${this.getRubyVal(jsonArg[0])}`;
+    return `driver.execute_script ${this.rubyStr(scriptCmd)}, ${this.getRubyVal(jsonArg[0])}`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
@@ -156,7 +170,7 @@ driver.quit`;
   }
 
   codeFor_getLogs(varNameIgnore, varIndexIgnore, logType) {
-    return `logs = driver.logs.get :${logType.toLowerCase()}`;
+    return `logs = driver.logs.get :${this.rubyStr(logType.toLowerCase())}`;
   }
 
   // Context
@@ -170,7 +184,7 @@ driver.quit`;
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `driver.context = '${name}'`;
+    return `driver.context = ${this.rubyStr(name)}`;
   }
 
   // Device Interaction
@@ -192,7 +206,7 @@ driver.quit`;
   }
 
   codeFor_setOrientation(varNameIgnore, varIndexIgnore, orientation) {
-    return `driver.rotation = :${orientation.toLowerCase()}`;
+    return `driver.rotation = :${this.rubyStr(orientation.toLowerCase())}`;
   }
 
   codeFor_getGeoLocation() {
@@ -210,47 +224,47 @@ driver.quit`;
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.install_app '${app}'`;
+    return `driver.install_app ${this.rubyStr(app)}`;
   }
 
   codeFor_isAppInstalled(varNameIgnore, varIndexIgnore, app) {
-    return `is_app_installed = driver.app_installed? '${app}'`;
+    return `is_app_installed = driver.app_installed? ${this.rubyStr(app)}`;
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.activate_app '${app}'`;
+    return `driver.activate_app ${this.rubyStr(app)}`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.terminate_app '${app}'`;
+    return `driver.terminate_app ${this.rubyStr(app)}`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `driver.remove_app '${app}'`;
+    return `driver.remove_app ${this.rubyStr(app)}`;
   }
 
   codeFor_queryAppState(varNameIgnore, varIndexIgnore, app) {
-    return `app_state = driver.query_app_state '${app}'`;
+    return `app_state = driver.query_app_state ${this.rubyStr(app)}`;
   }
 
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `driver.push_file '${pathToInstallTo}', '${fileContentString}'`;
+    return `driver.push_file ${this.rubyStr(pathToInstallTo)}, ${this.rubyStr(fileContentString)}`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `driver.pull_file '${pathToPullFrom}'`;
+    return `driver.pull_file ${this.rubyStr(pathToPullFrom)}`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `driver.pull_folder '${folderToPullFrom}'`;
+    return `driver.pull_folder ${this.rubyStr(folderToPullFrom)}`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `driver.get '${url}'`;
+    return `driver.get ${this.rubyStr(url)}`;
   }
 
   codeFor_getUrl() {
@@ -282,7 +296,7 @@ driver.quit`;
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `driver.switch_to.window '${handle}'`;
+    return `driver.switch_to.window ${this.rubyStr(handle)}`;
   }
 
   codeFor_getWindowHandles() {
