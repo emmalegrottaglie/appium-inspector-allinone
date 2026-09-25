@@ -153,7 +153,7 @@ const EnvStatus = ({status}) => {
 /** Python environment setup + pytest runner. Desktop-only. */
 const PythonPanel = () => {
   const {t} = useTranslation();
-  const {status, phase, log, confirm, clearConfirm, refresh, setup, installPackage, installRobot} = usePythonEnv();
+  const {status, phase, log, refresh, setup, installRobot} = usePythonEnv();
   const {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests} =
     usePythonTests();
   const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
@@ -322,32 +322,6 @@ const PythonPanel = () => {
           {phase === 'done' && <Text type="success">{t('Setup complete')}</Text>}
           {phase === 'error' && <Text type="danger">{t('Setup failed — see log')}</Text>}
         </Space>
-        {confirm && (
-          <Alert
-            type="warning"
-            showIcon
-            className={styles.confirm}
-            message={`Install third-party package "${confirm.package}"?`}
-            action={
-              <Space>
-                <Button
-                  size="small"
-                  danger
-                  onClick={() => {
-                    const pkg = confirm.package;
-                    clearConfirm();
-                    installPackage(pkg);
-                  }}
-                >
-                  {t('Install')}
-                </Button>
-                <Button size="small" onClick={clearConfirm}>
-                  {t('Cancel')}
-                </Button>
-              </Space>
-            }
-          />
-        )}
         {(settingUp || log.length > 0) && (
           <pre className={styles.log} ref={envLogRef}>
             {log.map((l) => l.chunk).join('')}

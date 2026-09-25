@@ -12,7 +12,6 @@ export function usePythonEnv() {
   const [status, setStatus] = useState(null); // result of python:status
   const [phase, setPhase] = useState('idle'); // idle | venv | install | done | error
   const [log, setLog] = useState([]); // [{stream, chunk}]
-  const [confirm, setConfirm] = useState(null); // {package} when a 3rd-party pip install needs consent
   const runIdRef = useRef(null);
   const stepRef = useRef(null); // 'venv' | 'install' | null
 
@@ -34,8 +33,7 @@ export function usePythonEnv() {
       runIdRef.current = res.runId;
       stepRef.current = 'install';
       setPhase('install');
-    } else if (res?.status === 'needs_confirmation') {
-      setConfirm({package: res.package});
+    } else if (res?.status === 'cancelled') {
       setPhase('idle');
     } else if (res?.status === 'venv_missing') {
       setPhase('error');
@@ -79,7 +77,6 @@ export function usePythonEnv() {
   // Full setup: detect -> (create venv if needed) -> install required deps.
   const setup = useCallback(async () => {
     setLog([]);
-    setConfirm(null);
     const st = await env.status();
     setStatus(st);
     if (!st.python.found || !st.python.meetsMinimum) {
@@ -98,15 +95,6 @@ export function usePythonEnv() {
     return res;
   }, [startInstall]);
 
-  // Install an extra (third-party) package after explicit confirmation.
-  const installPackage = useCallback(
-    (pkg) => {
-      setLog([]);
-      return startInstall({packages: [pkg], allowThirdParty: true});
-    },
-    [startInstall],
-  );
-
   // Add Robot Framework support to the venv (managed packages — no confirmation).
   const installRobot = useCallback(() => {
     setLog([]);
@@ -117,11 +105,8 @@ export function usePythonEnv() {
     status,
     phase,
     log,
-    confirm,
-    clearConfirm: () => setConfirm(null),
     refresh,
     setup,
-    installPackage,
     installRobot,
   };
 }

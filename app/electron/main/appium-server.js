@@ -4,6 +4,8 @@ import {ipcMain} from 'electron';
 
 import {buildAppiumCommand} from './appium-launch.js';
 import {cancelProcess, startProcess} from './process-runner.js';
+import {confirmWithUser} from './user-approval.js';
+import {LOOPBACK_HOSTS, validateServerConfig} from './validation.js';
 
 // Manages the lifecycle of a single local Appium server. The process itself
 // runs through the Step 0 runner (so its log streams over 'process:output'
@@ -144,7 +146,30 @@ async function start(sender, userCfg = {}) {
     return publicState();
   }
 
-  const cfg = {...DEFAULTS, ...userCfg};
+  // The renderer may choose only where the server listens; the launch flags stay main-owned.
+  let cfg;
+  try {
+    cfg = {...DEFAULTS, ...validateServerConfig({...DEFAULTS, ...userCfg})};
+  } catch (err) {
+    return {status: 'error', error: err.message};
+  }
+  if (!LOOPBACK_HOSTS.includes(cfg.host)) {
+    const approved = await confirmWithUser(sender, {
+      message: `Start the Appium server on ${cfg.host}?`,
+      detail:
+        'The server runs with --allow-cors and session discovery enabled, which is only safe on a ' +
+        'loopback address such as 127.0.0.1. On any other address, other machines on the network ' +
+        'can reach it and run commands on this computer.',
+      confirmLabel: 'Start anyway',
+    });
+    if (!approved) {
+      return publicState();
+    }
+    // the dialog awaited user input, so another start may have happened meanwhile
+    if (server && (server.status === 'starting' || server.status === 'running')) {
+      return publicState();
+    }
+  }
   let launch;
   try {
     launch = await assembleLaunch(cfg);

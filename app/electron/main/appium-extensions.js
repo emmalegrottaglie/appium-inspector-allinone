@@ -2,6 +2,7 @@ import {ipcMain} from 'electron';
 
 import {buildAppiumCommand} from './appium-launch.js';
 import {collectProcess, startProcess} from './process-runner.js';
+import {confirmWithUser} from './user-approval.js';
 
 // Driver & plugin management: a thin, HARDENED wrapper over the Appium
 // extension CLI (`appium {driver|plugin} list|install|update|uninstall|doctor`).
@@ -13,8 +14,9 @@ import {collectProcess, startProcess} from './process-runner.js';
 //   2. Strict validation    - names/specs matched against tight regexes and can
 //                             never begin with '-' (argument-injection guard).
 //   3. Secure-by-default     - official short-names install with no --source.
-//      sourcing                Anything else needs explicit allowThirdParty
-//                             (the UI gates this behind a confirmation dialog).
+//      sourcing                Anything else needs the user's consent in a native
+//                             dialog shown by MAIN (user-approval.js); the
+//                             renderer cannot grant it.
 //   4. Limited sources      - only 'npm' and 'github' accepted; 'git' and
 //                             'local' (arbitrary URLs / filesystem paths) are
 //                             refused outright -- highest-risk install vectors.
@@ -127,7 +129,7 @@ function spawnExt(sender, type, label, args) {
     });
 }
 
-async function install(sender, {type, name, source = null, packageName = null, allowThirdParty = false}) {
+async function install(sender, {type, name, source = null, packageName = null}) {
   assertType(type);
 
   // --- official install: bare short-name, no --source ---
@@ -138,40 +140,47 @@ async function install(sender, {type, name, source = null, packageName = null, a
       return spawnExt(sender, type, name, [type, 'install', name, '--json']);
     }
     // Unknown name: do NOT silently treat it as an arbitrary npm install.
-    // Surface a confirmation request the UI can act on.
-    return {status: 'needs_confirmation', kind: 'not_official', type, name};
-  }
-
-  // --- third-party install: requires explicit user confirmation ---
-  if (!allowThirdParty) {
-    return {status: 'needs_confirmation', kind: 'third_party', type, name, source};
-  }
-
-  if (source === 'npm') {
-    if (typeof name !== 'string' || name.startsWith('-') || !NPM_SPEC.test(name)) {
+    if (!NPM_SPEC.test(name)) {
       throw new Error(`Invalid npm package spec: ${String(name)}`);
+    }
+    const approved = await confirmWithUser(sender, {
+      message: `"${name}" is not an official Appium ${type}.`,
+      detail: `Install the npm package "${name}" anyway? Only do this if you trust the package.`,
+      confirmLabel: 'Install anyway',
+    });
+    if (!approved) {
+      return {status: 'cancelled'};
     }
     return spawnExt(sender, type, name, [type, 'install', name, '--source=npm', '--json']);
   }
 
-  if (source === 'github') {
+  // --- third-party install: validated first, then requires the user's consent ---
+  let args;
+  if (source === 'npm') {
+    if (typeof name !== 'string' || name.startsWith('-') || !NPM_SPEC.test(name)) {
+      throw new Error(`Invalid npm package spec: ${String(name)}`);
+    }
+    args = [type, 'install', name, '--source=npm', '--json'];
+  } else if (source === 'github') {
     if (typeof name !== 'string' || !GITHUB_URL.test(name)) {
       throw new Error(`Invalid GitHub repo URL: ${String(name)}`);
     }
     assertShortName(packageName); // --package is required for github source
-    return spawnExt(sender, type, name, [
-      type,
-      'install',
-      name,
-      '--source=github',
-      `--package=${packageName}`,
-      '--json',
-    ]);
+    args = [type, 'install', name, '--source=github', `--package=${packageName}`, '--json'];
+  } else {
+    // 'git' and 'local' are intentionally unsupported from the renderer:
+    // arbitrary Git URLs / local paths are the highest-risk install vectors.
+    throw new Error(`Unsupported install source: ${String(source)}`);
   }
-
-  // 'git' and 'local' are intentionally unsupported from the renderer:
-  // arbitrary Git URLs / local paths are the highest-risk install vectors.
-  throw new Error(`Unsupported install source: ${String(source)}`);
+  const approved = await confirmWithUser(sender, {
+    message: `Install the ${type} "${name}" from ${source}?`,
+    detail: 'Third-party extensions are installed at your own risk.',
+    confirmLabel: 'Install',
+  });
+  if (!approved) {
+    return {status: 'cancelled'};
+  }
+  return spawnExt(sender, type, name, args);
 }
 
 async function update(sender, {type, name, unsafe = false}) {

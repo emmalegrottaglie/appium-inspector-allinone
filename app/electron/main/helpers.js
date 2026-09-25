@@ -11,14 +11,30 @@ import {setupProcessIPC} from './process-runner.js';
 import {setupPythonEnvIPC} from './python-env.js';
 import {setupPythonTestsIPC} from './python-tests.js';
 import {setupRuntimesIPC} from './system-runtimes.js';
+import {assertRendererSettingKey, isOpenableLink} from './validation.js';
 
 export const isDev = process.env.NODE_ENV === 'development';
 
 export function setupIPCListeners(getOpenFilePath) {
-  ipcMain.handle('settings:has', async (_evt, key) => await settings.has(key));
-  ipcMain.handle('settings:set', async (_evt, key, value) => await settings.set(key, value));
-  ipcMain.handle('settings:get', async (_evt, key) => await settings.get(key));
-  ipcMain.on('electron:openLink', (_evt, link) => shell.openExternal(link));
+  // All-in-one: `env:` settings pick the executables the main process spawns, so they are
+  // main-only; links are opened only if they are https.
+  ipcMain.handle('settings:has', async (_evt, key) => {
+    assertRendererSettingKey(key);
+    return await settings.has(key);
+  });
+  ipcMain.handle('settings:set', async (_evt, key, value) => {
+    assertRendererSettingKey(key);
+    return await settings.set(key, value);
+  });
+  ipcMain.handle('settings:get', async (_evt, key) => {
+    assertRendererSettingKey(key);
+    return await settings.get(key);
+  });
+  ipcMain.on('electron:openLink', (_evt, link) => {
+    if (isOpenableLink(link)) {
+      shell.openExternal(link);
+    }
+  });
   ipcMain.on('electron:setTheme', (_evt, theme) => (nativeTheme.themeSource = theme));
   ipcMain.handle('sessionfile:loadIfOpened', async () => {
     const openFilePath = getOpenFilePath();

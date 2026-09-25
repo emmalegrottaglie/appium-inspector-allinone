@@ -1,19 +1,21 @@
 import {randomUUID} from 'node:crypto';
-import {mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync} from 'node:fs';
+import {mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {isAbsolute, join, relative, resolve} from 'node:path';
 
-import {dialog, ipcMain} from 'electron';
+import {ipcMain} from 'electron';
 import {XMLParser} from 'fast-xml-parser';
 
 import {startProcess} from './process-runner.js';
 import {venvExists, venvPython} from './python-env.js';
+import {assertApprovedDir, pickWorkingDir} from './user-approval.js';
 
 // Test authoring + execution. Runs the user's OWN pytest code -- so arbitrary
 // code execution is the intended feature here, not a vuln. The guards exist to
 // stop INJECTED content (a crafted page source, a malicious .appiumsession)
 // from steering execution:
-//   - the working directory comes from a native OS dialog, and is re-validated
+//   - the working directory must be one the user picked in the native OS dialog
+//     (user-approval.js), and is re-validated on every call
 //   - file paths are confined to the working dir (path-traversal guard)
 //   - positional/keyword args can never start with '-' (pytest-flag injection)
 //   - a run is only ever started by an explicit user action, never by streamed
@@ -24,21 +26,6 @@ import {venvExists, venvPython} from './python-env.js';
 // pytest; it does not share the GUI's live inspector session.
 
 const xml = new XMLParser({ignoreAttributes: false, attributeNamePrefix: '@_'});
-
-function assertDir(dir) {
-  if (typeof dir !== 'string' || !dir) {
-    throw new Error('A working directory is required.');
-  }
-  let st;
-  try {
-    st = statSync(dir);
-  } catch {
-    throw new Error(`Not found: ${dir}`);
-  }
-  if (!st.isDirectory()) {
-    throw new Error(`Not a directory: ${dir}`);
-  }
-}
 
 // Resolve a user-supplied relative path and guarantee it stays inside `dir`.
 function safeJoin(dir, relPath) {
@@ -51,14 +38,6 @@ function safeJoin(dir, relPath) {
     throw new Error(`Path escapes the working directory: ${relPath}`);
   }
   return full;
-}
-
-async function pickWorkingDir() {
-  const res = await dialog.showOpenDialog({properties: ['openDirectory']});
-  if (res.canceled || !res.filePaths.length) {
-    return {canceled: true};
-  }
-  return {canceled: false, path: res.filePaths[0]};
 }
 
 const SKIP_DIRS = new Set(['__pycache__', 'node_modules', 'venv', '.venv', '.git']);
@@ -102,7 +81,7 @@ function langOf(relPath) {
 }
 
 function listTests(dir) {
-  assertDir(dir);
+  assertApprovedDir(dir);
   const out = [];
   const walk = (d, depth) => {
     if (depth > 4) {
@@ -125,12 +104,12 @@ function listTests(dir) {
 }
 
 function readTestFile(dir, relPath) {
-  assertDir(dir);
+  assertApprovedDir(dir);
   return readFileSync(safeJoin(dir, relPath), 'utf8');
 }
 
 function saveTestFile(dir, relPath, content) {
-  assertDir(dir);
+  assertApprovedDir(dir);
   if (typeof relPath !== 'string' || !TEST_EXTS.some((e) => relPath.endsWith(e))) {
     throw new Error(`Only test files (${TEST_EXTS.join(', ')}) can be saved.`);
   }
@@ -225,7 +204,7 @@ function emitResult(sender, runId, {code, signal, error}, reportPath, reportDir)
 }
 
 async function runTests(sender, {workingDir, paths = [], keyword = null} = {}) {
-  assertDir(workingDir);
+  assertApprovedDir(workingDir);
 
   const fileArgs = [];
   for (const p of paths) {

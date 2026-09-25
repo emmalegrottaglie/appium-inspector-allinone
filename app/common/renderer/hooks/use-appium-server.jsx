@@ -44,8 +44,9 @@ export function useAppiumServer() {
 
   /**
    * Start the server. Clears the log and returns the initial state.
-   * @param {{host?: string, port?: number, basePath?: string,
-   *          plugins?: string[], allowCors?: boolean}} [cfg]
+   * Only where the server listens is configurable; the launch flags are fixed by the main
+   * process, which also asks the user before binding to a non-loopback host.
+   * @param {{host?: string, port?: number, basePath?: string}} [cfg]
    */
   const start = useCallback(async (cfg) => {
     if (!appium) {
