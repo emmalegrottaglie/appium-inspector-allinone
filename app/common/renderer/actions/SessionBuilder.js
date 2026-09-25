@@ -26,6 +26,7 @@ import {log} from '../utils/logger.js';
 import {notification} from '../utils/notification.js';
 import {addVendorPrefixes, getRandomId} from '../utils/other.js';
 import {parseSessionFileContents} from '../utils/sessionfile-parsing.js';
+import {sanitizeUrlState} from '../utils/url-state.js';
 import {quitSession, setSessionDetails} from './SessionInspector.js';
 
 export const NEW_SESSION_REQUESTED = 'NEW_SESSION_REQUESTED';
@@ -935,6 +936,13 @@ export function setPortFromUrl() {
   };
 }
 
+// Where a session would be started for the local/remote server types a URL may select
+function describeServerUrl({serverType, server}) {
+  const {hostname, port, path, ssl} = server[serverType] || {};
+  const serverPath = path || DEFAULT_SERVER_PROPS.path;
+  return `${ssl ? 'https' : 'http'}://${hostname || DEFAULT_SERVER_PROPS.hostname}:${port || DEFAULT_SERVER_PROPS.port}${serverPath === '/' ? '' : serverPath}`;
+}
+
 export function initFromQueryString(loadNewSession) {
   return (dispatch, getState) => {
     if (!isFirstRun) {
@@ -947,16 +955,34 @@ export function initFromQueryString(loadNewSession) {
     const initialState = url.searchParams.get('state');
     const autoStartSession = url.searchParams.get('autoStart');
 
+    let changesServer = false;
     if (initialState) {
+      let parsedState;
       try {
-        const state = JSON.parse(initialState);
-        dispatch({type: SET_STATE_FROM_URL, state});
+        parsedState = JSON.parse(initialState);
       } catch {
         showError(new Error('Could not parse initial state from URL'), {secs: 0});
+      }
+      if (parsedState !== undefined) {
+        // Anyone can craft this link, so only the parts that cannot redirect saved
+        // credentials are applied
+        const {state, dropped, changesServer: urlChangesServer} = sanitizeUrlState(parsedState);
+        changesServer = urlChangesServer;
+        if (dropped.length) {
+          log.warn(`Ignored state from URL that a link may not set: ${dropped.join(', ')}`);
+        }
+        dispatch({type: SET_STATE_FROM_URL, state});
       }
     }
 
     if (autoStartSession === AUTO_START_URL_PARAM) {
+      // A link that picks the server must not also start a session on it unprompted
+      if (
+        changesServer &&
+        !window.confirm(i18n.t('startSessionFromLinkConfirmation', {url: describeServerUrl(getState().builder)}))
+      ) {
+        return;
+      }
       // at this point these can only be set using SET_STATE_FROM_URL
       const {attachSessId, caps} = getState().builder;
       if (attachSessId) {
