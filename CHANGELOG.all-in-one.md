@@ -122,6 +122,31 @@ initialization`. `binary-resolver.js` imported `isDev` from `helpers.js`, but
 
 ### Security
 
+Fixes from a whole-repository security review (finding ids refer to that report):
+
+- **Generated tests could run code taken from the app under test** (F1, F3,
+  F6–F11). Recorded locators, typed text and server context names were pasted
+  into generated code unescaped, or with `JSON.stringify`, which is not a Ruby
+  or Robot escaper. Text shown by the app could become code that ran when the
+  test was executed from the Tests panel. Every value is now escaped for its
+  target language: single-quoted Ruby literals, escaped Robot cells, and
+  line-terminator-safe string literals for Python/JS/Java/C#.
+  Unsupported-locator comments quote the locator, so a newline cannot end the
+  comment.
+- **Sauce Labs credentials were sent over plain HTTP** (F4), to a host built from
+  an unvalidated data-center string (F5). The ondemand endpoints now use HTTPS,
+  and only the offered data centers are accepted.
+- **A crafted `?state=` link could send saved cloud credentials to another host**
+  (F2, browser/plugin builds). URL state is now limited to capabilities and a
+  local/remote server, and auto-start asks first when the link changed the
+  server.
+- **IPC hardening** (defense in depth, for when renderer isolation is enabled):
+  - consent for third-party installs and non-loopback server binds now comes
+    from native dialogs in the main process;
+  - working directories must have been picked in the folder dialog;
+  - `env:` settings (which pick spawned executables) are main-only;
+  - `appium:start` accepts only a validated host/port/base path;
+  - `openLink` opens `https:` links only.
 - Constrained IPC: the renderer sends intent only; the main process builds every
   command from fixed templates. `shell: false` on every spawn; values may never
   start with `-` (argument-injection guard).
