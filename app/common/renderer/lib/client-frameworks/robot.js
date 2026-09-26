@@ -34,15 +34,16 @@ export default class RobotFramework extends CommonClientFramework {
       escapeUnsafeChar,
     )
       .join('')
-      // two or more spaces separate cells, so escape every space after the first in a run
-      .replace(/ {2,}/g, (run) => ` ${'\\ '.repeat(run.length - 1)}`)
+      // Robot splits cells on runs of two or more whitespace characters (Unicode spaces such as
+      // NBSP included), so every whitespace character after the first in a run is escaped
+      .replace(/\s{2,}/g, (run) => Array.from(run, (ch, i) => (i ? `\\${ch}` : ch)).join(''))
       .replace(/^#/, '\\#');
-    // Robot strips leading and trailing spaces from a cell
-    if (escaped.startsWith(' ')) {
-      escaped = `\${SPACE}${escaped.slice(1)}`;
+    // Robot strips whitespace at either end of a cell; an empty variable there keeps it
+    if (/^\s/.test(escaped)) {
+      escaped = `\${EMPTY}${escaped}`;
     }
-    if (escaped.endsWith(' ') && !escaped.endsWith('\\ ')) {
-      escaped = `${escaped.slice(0, -1)}\${SPACE}`;
+    if (/\s$/.test(escaped)) {
+      escaped = `${escaped}\${EMPTY}`;
     }
     return escaped;
   }
