@@ -135,17 +135,23 @@ Fixes from a whole-repository security review (finding ids refer to that report)
   comment.
 - **Sauce Labs credentials were sent over plain HTTP** (F4), to a host built from
   an unvalidated data-center string (F5). The ondemand endpoints now use HTTPS,
-  and only the offered data centers are accepted.
+  and only the offered data centers are accepted. A Sauce Connect proxy host
+  other than this machine (plain HTTP, and settable from a session file) is
+  confirmed before the credentials are sent to it.
 - **A crafted `?state=` link could send saved cloud credentials to another host**
   (F2, browser/plugin builds). URL state is now limited to capabilities and a
-  local/remote server, and auto-start asks first when the link changed the
-  server.
-- **IPC hardening** (defense in depth, for when renderer isolation is enabled):
-  - consent for third-party installs and non-loopback server binds now comes
-    from native dialogs in the main process;
+  local/remote server, and auto-start always asks first: even a link that sets
+  only capabilities would start a session on the selected server, which may be
+  a cloud account.
+- **IPC hardening** (defense in depth: the renderer still has Node integration,
+  so these become a hard boundary once renderer isolation is enabled):
+  - consent for third-party installs, major-version updates and non-loopback
+    server binds now comes from native dialogs in the main process;
   - working directories must have been picked in the folder dialog;
-  - `env:` settings (which pick spawned executables) are main-only;
-  - `appium:start` accepts only a validated host/port/base path;
+  - `env:` settings (which pick spawned executables) are main-only, and only
+    plain setting names are accepted, since keys are read as key paths;
+  - `appium:start` accepts only a validated host/port/base path (IPv6 checked
+    with `net.isIP`), and concurrent starts no longer spawn a second server;
   - `openLink` opens `https:` links only.
 - Constrained IPC: the renderer sends intent only; the main process builds every
   command from fixed templates. `shell: false` on every spawn; values may never
