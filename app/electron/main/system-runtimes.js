@@ -4,6 +4,7 @@ import {join} from 'node:path';
 import {ipcMain} from 'electron';
 
 import {collectProcess, startProcess} from './process-runner.js';
+import {assertApprovedDir} from './user-approval.js';
 
 // Detect and prepare the system toolchains used to RUN non-Python recorded
 // tests: Ruby (.rb), Node + WebdriverIO (.js), and the Oxygen CLI (.js).
@@ -65,9 +66,7 @@ function installRubyGems(sender) {
 
 /** Install WebdriverIO into the working dir so node can run recorded .js tests. */
 function installJsDeps(sender, workingDir) {
-  if (typeof workingDir !== 'string' || !existsSync(workingDir)) {
-    throw new Error('A valid working directory is required.');
-  }
+  assertApprovedDir(workingDir);
   // ESM `import {remote} from 'webdriverio'` needs the dir marked as a module.
   const pkgJson = join(workingDir, 'package.json');
   if (!existsSync(pkgJson)) {

@@ -134,6 +134,7 @@
   "Android": "Android",
   "desiredCapabilitiesDocumentation": "Capabilities Documentation",
   "startSession": "Start Session",
+  "startSessionFromLinkConfirmation": "This link points the Inspector at {{url}}. Start a session on that server now?",
   "saveAs": "Save As…",
   "attachToSession": "Attach to Session",
   "selectedElement": "Selected Element",

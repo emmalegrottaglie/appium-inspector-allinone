@@ -5,6 +5,7 @@ import {app, ipcMain} from 'electron';
 
 import {resolveBinary} from './binary-resolver.js';
 import {collectProcess, startProcess} from './process-runner.js';
+import {confirmWithUser} from './user-approval.js';
 
 // Python environment management: detect an interpreter, create an isolated,
 // app-scoped venv, and install dependencies into it. Python is never bundled
@@ -134,17 +135,28 @@ async function createVenv(sender) {
   return {status: 'started', runId, op: 'createVenv'};
 }
 
-async function installDeps(sender, {packages = REQUIRED_PACKAGES, allowThirdParty = false} = {}) {
+async function installDeps(sender, {packages = REQUIRED_PACKAGES} = {}) {
   if (!venvExists()) {
     return {status: 'venv_missing'};
   }
   const requiredBases = new Set([...REQUIRED_PACKAGES, ...ROBOT_PACKAGES].map((p) => p.toLowerCase().split('==')[0]));
+  if (!Array.isArray(packages)) {
+    throw new Error('packages must be an array of package specs.');
+  }
   for (const spec of packages) {
     validatePkg(spec);
-    const base = spec.toLowerCase().split('==')[0];
-    if (!requiredBases.has(base) && !allowThirdParty) {
-      // Installing anything beyond the managed set is a deliberate choice.
-      return {status: 'needs_confirmation', package: spec};
+  }
+  // Installing anything beyond the managed set is a deliberate choice, made by the user in a
+  // native dialog rather than by the renderer.
+  const thirdParty = packages.filter((spec) => !requiredBases.has(spec.toLowerCase().split('==')[0]));
+  if (thirdParty.length) {
+    const approved = await confirmWithUser(sender, {
+      message: `Install third-party Python ${thirdParty.length === 1 ? 'package' : 'packages'} ${thirdParty.map((spec) => `"${spec}"`).join(', ')}?`,
+      detail: 'These packages are not part of the managed test environment. Only install packages you trust.',
+      confirmLabel: 'Install',
+    });
+    if (!approved) {
+      return {status: 'cancelled'};
     }
   }
   const {runId} = startProcess(sender, {

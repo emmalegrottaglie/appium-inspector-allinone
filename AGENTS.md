@@ -96,6 +96,8 @@ app/electron/main/          # Node main process (full system access)
   appium-launch.js          # buildAppiumCommand(); isolated APPIUM_HOME (<userData>/appium-home)
   appium-server.js          # bundled server lifecycle (start/stop/status/readiness)
   appium-extensions.js      # hardened driver/plugin management
+  user-approval.js          # native-dialog gates: working-dir picker/registry, consent prompts
+  validation.js             # pure (electron-free) IPC input validators; unit-tested
   python-env.js             # interpreter detect, venv, pip installs (+ Robot pkgs)
   python-tests.js           # working-dir IO + multi-language test RUN + JUnit/xUnit parse
   system-runtimes.js        # detect Ruby/Node/Oxygen; install their client deps
@@ -239,15 +241,37 @@ npm run pack:electron                                # installer (.exe) + zip (u
   regexes and **may never start with `-`** (argument-injection guard). Test file
   paths are confined to the chosen working dir (path-traversal guard).
 - The open `process:start` "spawn anything" IPC is **dev-only**.
-- Extensions: official names install with no `--source`; unknown names / explicit
-  sources require `allowThirdParty` (UI confirmation); only npm + https GitHub
-  accepted; git/local refused; major updates require `unsafe:true`.
-- Python: managed set (`Appium-Python-Client`, `pytest`, `robotframework*`)
-  installs without prompt; anything else needs third-party confirmation. Working
-  dir comes from a native dialog and is re-validated.
-- Server binds `127.0.0.1`. `--allow-cors` (needed by Raw Command) and
+- **Consent comes from MAIN, never from the renderer.** Anything the user must
+  approve is asked in a native dialog by `user-approval.js`; there is no
+  renderer-supplied "allowed" flag to trust.
+  - Extensions: official names install with no `--source`; unknown names and
+    explicit sources are validated, then confirmed by the user in the dialog;
+    only npm + https GitHub accepted; git/local refused; major updates require
+    `unsafe:true`.
+  - Python: managed set (`Appium-Python-Client`, `pytest`, `robotframework*`)
+    installs without prompt; anything else is confirmed in the dialog.
+- **Working directories come from the picker registry.** Only a directory the
+  user chose in `pickWorkingDir()` this session passes `assertApprovedDir()`;
+  every `python:*` file/run call and `runtimes:installJsDeps` checks it.
+- **`env:` settings are main-only.** They pick the executables MAIN spawns
+  (`binary-resolver.js`), so `settings:has/get/set` refuse any `env:` key.
+  `electron:openLink` opens `https:` links only.
+- **`appium:start` takes only `host`/`port`/`basePath`** (validated in
+  `validation.js`); plugins, CORS and insecure features are fixed by MAIN.
+  Server binds `127.0.0.1` by default. `--allow-cors` (needed by Raw Command) and
   `--allow-insecure=*:session_discovery` (needed by Attach to Session) are safe
-  **only on loopback**; the UI warns on a non-loopback host.
+  **only on loopback**, so MAIN asks in a native dialog before binding anywhere
+  else (the UI also warns).
+- **Code generators escape every interpolated value** for the target language:
+  locators, typed text and context names come from the app under test or the
+  server, and the in-app runner executes the generated code. Ruby uses
+  `rubyStr()` (single-quoted, no `#{}`), Robot uses `robotArg()`, and
+  Python/JS/Java/C# use `quote()` from `common.js`. Never interpolate a value
+  raw inside quotes (`'${x}'`) or with `JSON.stringify` in Ruby/Robot.
+- **URL state is sanitized** (`utils/url-state.js`): a `?state=` link may set
+  caps, an attach session id and the local/remote server only; vendor slices
+  (saved credentials) and advanced options are dropped, and auto-start asks
+  first when the link changed the server.
 
 ---
 

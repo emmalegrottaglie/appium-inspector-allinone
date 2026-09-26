@@ -84,9 +84,21 @@ export default class CommonClientFramework {
     return varName;
   }
 
+  // Render a value as a double-quoted string literal that is valid in Python, JS, Java and C#,
+  // and safe inside a single-line comment in any target language. Values such as locators come
+  // from the app's page source, so they must not be able to end the literal (or the comment)
+  // and inject code. JSON.stringify escapes quotes, backslashes and control characters; the
+  // remaining characters that JS or C# treat as line terminators are escaped here.
+  quote(value) {
+    return JSON.stringify(String(value)).replace(
+      /[\u0085\u2028\u2029]/g,
+      (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`,
+    );
+  }
+
   handleUnsupportedLocatorStrategy(strategy, locator) {
     return this.addComment(
-      `Code generation for locator strategy '${strategy}' (selector '${locator}') is not currently supported`,
+      `Code generation for locator strategy ${this.quote(strategy)} (selector ${this.quote(locator)}) is not currently supported`,
     );
   }
 

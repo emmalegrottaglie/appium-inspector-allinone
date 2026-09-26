@@ -8,14 +8,16 @@ export default class DotNetNUnitFramework extends CommonClientFramework {
   static refractorLib = refractorCsharp;
 
   getCSharpVal(jsonVal) {
-    if (Array.isArray(jsonVal)) {
+    if (jsonVal === null) {
+      return 'null';
+    } else if (Array.isArray(jsonVal)) {
       const convertedItems = jsonVal.map((item) => this.getCSharpVal(item));
       return `{${convertedItems.join(', ')}}`;
     } else if (typeof jsonVal === 'object') {
-      const convertedItems = Object.entries(jsonVal).map(([k, v]) => `{${JSON.stringify(k)}, ${this.getCSharpVal(v)}}`);
+      const convertedItems = Object.entries(jsonVal).map(([k, v]) => `{${this.quote(k)}, ${this.getCSharpVal(v)}}`);
       return `new Dictionary<string, dynamic> {${convertedItems.join(', ')}}`;
     }
-    return JSON.stringify(jsonVal);
+    return typeof jsonVal === 'string' ? this.quote(jsonVal) : JSON.stringify(jsonVal);
   }
 
   wrapWithBoilerplate(code) {
@@ -39,7 +41,7 @@ export default class DotNetNUnitFramework extends CommonClientFramework {
     })();
     let capStr = this.indent(
       Object.entries(this.caps)
-        .map(([k, v]) => `options.AddAdditionalAppiumOption(${JSON.stringify(k)}, ${this.getCSharpVal(v)});`)
+        .map(([k, v]) => `options.AddAdditionalAppiumOption(${this.quote(k)}, ${this.getCSharpVal(v)});`)
         .join('\n'),
       8,
     );
@@ -64,7 +66,7 @@ public class Tests
     [OneTimeSetUp]
     public void SetUp()
     {
-        var serverUri = new Uri("${this.serverUrl}");
+        var serverUri = new Uri(${this.quote(this.serverUrl)});
         var options = new AppiumOptions();
 ${capStr}
 
@@ -107,9 +109,9 @@ ${this.indent(code, 8)}
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `var ${localVar} = _driver.FindElements(MobileBy.${suffixMap[strategy]}(${JSON.stringify(locator)}));`;
+      return `var ${localVar} = _driver.FindElements(MobileBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
     } else {
-      return `var ${localVar} = _driver.FindElement(MobileBy.${suffixMap[strategy]}(${JSON.stringify(locator)}));`;
+      return `var ${localVar} = _driver.FindElement(MobileBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
     }
   }
 
@@ -122,7 +124,7 @@ ${this.indent(code, 8)}
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.getVarName(varName, varIndex)}.SendKeys(${JSON.stringify(text)});`;
+    return `${this.getVarName(varName, varIndex)}.SendKeys(${this.quote(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -157,22 +159,23 @@ _driver.PerformActions(new List<ActionSequence> { swipe });
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `_driver.ExecuteScript(${JSON.stringify(scriptCmd)});`;
+    return `_driver.ExecuteScript(${this.quote(scriptCmd)});`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
     // C# Dictionary accepts a sequence of tuples
-    return `_driver.ExecuteScript(${JSON.stringify(scriptCmd)}, ${this.getCSharpVal(jsonArg[0])});`;
+    return `_driver.ExecuteScript(${this.quote(scriptCmd)}, ${this.getCSharpVal(jsonArg[0])});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
     try {
       const settings = Object.entries(settingsJson).map(
-        ([settingName, settingValue]) => `_driver.SetSetting("${settingName}", ${this.getCSharpVal(settingValue)});`,
+        ([settingName, settingValue]) =>
+          `_driver.SetSetting(${this.quote(settingName)}, ${this.getCSharpVal(settingValue)});`,
       );
       return settings.join('\n');
     } catch {
-      return `// Could not parse: ${JSON.stringify(settingsJson)}`;
+      return `// Could not parse: ${this.quote(JSON.stringify(settingsJson))}`;
     }
   }
 
@@ -222,7 +225,7 @@ let timeouts = new Dictionary<string, TimeSpan>()
   }
 
   codeFor_getLogs(varNameIgnore, varIndexIgnore, logType) {
-    return `let logs = _driver.Manage().Logs.GetLog("${logType}");`;
+    return `let logs = _driver.Manage().Logs.GetLog(${this.quote(logType)});`;
   }
 
   // Context
@@ -236,7 +239,7 @@ let timeouts = new Dictionary<string, TimeSpan>()
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `_driver.Context = "${name}";`;
+    return `_driver.Context = ${this.quote(name)};`;
   }
 
   // Device Interaction
@@ -258,7 +261,7 @@ let timeouts = new Dictionary<string, TimeSpan>()
   }
 
   codeFor_setOrientation(varNameIgnore, varIndexIgnore, orientation) {
-    return `_driver.Orientation = "${orientation}";`;
+    return `_driver.Orientation = ${this.quote(orientation)};`;
   }
 
   codeFor_getGeoLocation() {
@@ -276,47 +279,47 @@ let timeouts = new Dictionary<string, TimeSpan>()
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `_driver.InstallApp("${app}");`;
+    return `_driver.InstallApp(${this.quote(app)});`;
   }
 
   codeFor_isAppInstalled(varNameIgnore, varIndexIgnore, app) {
-    return `var isAppInstalled = _driver.IsAppInstalled("${app}");`;
+    return `var isAppInstalled = _driver.IsAppInstalled(${this.quote(app)});`;
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `_driver.ActivateApp("${app}");`;
+    return `_driver.ActivateApp(${this.quote(app)});`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `_driver.TerminateApp("${app}");`;
+    return `_driver.TerminateApp(${this.quote(app)});`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `_driver.RemoveApp("${app}")`;
+    return `_driver.RemoveApp(${this.quote(app)})`;
   }
 
   codeFor_queryAppState(varNameIgnore, varIndexIgnore, app) {
-    return `var appState = _driver.GetAppState("${app}");`;
+    return `var appState = _driver.GetAppState(${this.quote(app)});`;
   }
 
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `_driver.PushFile("${pathToInstallTo}", "${fileContentString}");`;
+    return `_driver.PushFile(${this.quote(pathToInstallTo)}, ${this.quote(fileContentString)});`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `var fileBase64 = _driver.PullFile("${pathToPullFrom}");`;
+    return `var fileBase64 = _driver.PullFile(${this.quote(pathToPullFrom)});`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `var folderBase64 = _driver.PullFolder("${folderToPullFrom}");`;
+    return `var folderBase64 = _driver.PullFolder(${this.quote(folderToPullFrom)});`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `_driver.Url = "${url}";`;
+    return `_driver.Url = ${this.quote(url)};`;
   }
 
   codeFor_getUrl() {
@@ -348,7 +351,7 @@ let timeouts = new Dictionary<string, TimeSpan>()
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `_driver.SwitchTo().Window("${handle}");`;
+    return `_driver.SwitchTo().Window(${this.quote(handle)});`;
   }
 
   codeFor_getWindowHandles() {

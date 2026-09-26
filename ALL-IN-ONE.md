@@ -183,8 +183,8 @@ between drivers and plugins; each kind gets its own hook instance.
 | Input                                                                              | Behaviour                                                                              |
 | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Official short-name (e.g. `uiautomator2`)                                          | Installs directly, no source flag.                                                     |
-| Unknown short-name                                                                 | Returns `needs_confirmation` (`not_official`) → panel asks before installing from npm. |
-| Explicit `source` without consent                                                  | Returns `needs_confirmation` (`third_party`) → panel asks.                             |
+| Unknown short-name                                                                 | Main process asks in a native dialog before installing it from npm.                   |
+| Explicit `source`                                                                  | Validated, then the main process asks in a native dialog.                              |
 | `source: npm` (validated spec) / `github` (validated `https://github.com/...` URL) | Allowed after consent.                                                                 |
 | `source: git` / `local`                                                            | **Refused** — highest-risk vectors.                                                    |
 
@@ -204,10 +204,12 @@ app-scoped virtualenv at `<userData>/python-env/venv`. "Set up environment"
 chains _create venv → install deps_ as one logical operation, streaming both
 phases into one log. Managed packages: `Appium-Python-Client`, `pytest` (left
 unpinned so pip picks a version compatible with your interpreter). Installing
-anything beyond that set requires explicit third-party confirmation.
+anything beyond that set is confirmed by the user in a native dialog shown by the
+main process.
 
-**Tests.** Pick a working directory via a native dialog (re-validated in the
-main process; all file IO is confined to it with a path-traversal guard). The
+**Tests.** Pick a working directory via a native dialog (only a directory picked
+there this session is accepted by the main process, and it is re-validated on
+every call; all file IO is confined to it with a path-traversal guard). The
 panel lists `.py` files, takes an optional pytest `-k` keyword filter, and runs:
 
 ```
@@ -284,6 +286,8 @@ no copy-paste.
 | `python-env.js`        | Interpreter detect, venv creation, pip installs.                                                  |
 | `python-tests.js`      | Working-dir IO + pytest run + JUnit parsing.                                                      |
 | `code-export.js`       | Save recorder-generated code to a file via a native Save dialog.                                  |
+| `user-approval.js`     | Native-dialog gates: working-directory picker + registry, consent prompts for risky actions.      |
+| `validation.js`        | Pure validators for renderer IPC input (settings keys, links, server config).                     |
 
 **Renderer** (`app/common/renderer/`)
 
@@ -406,15 +410,30 @@ cert.
 - **`process:start` is dev-only** — the "spawn anything" channel is registered
   only when `NODE_ENV === 'development'`. Production reaches Appium solely
   through the constrained endpoints (`appium:*`, `extensions:*`, `python:*`).
-- **Extensions** — official names install with no source; third-party requires
-  explicit `allowThirdParty` (UI confirmation); only npm + https GitHub accepted;
+- **Consent from the main process** — risky actions are approved by the user in
+  a native dialog shown by the main process (`user-approval.js`); the renderer
+  cannot grant consent itself.
+- **Extensions** — official names install with no source; unknown names and
+  third-party sources need that consent; only npm + https GitHub accepted;
   git/local refused; major updates require `unsafe: true`.
-- **Python** — deps in an isolated venv; non-managed packages need confirmation;
-  the working dir comes from a native dialog and is re-validated; file IO is
-  confined to it; runs are user-initiated only.
+- **Python** — deps in an isolated venv; non-managed packages need consent; only
+  a working dir picked in the native dialog this session is accepted, and it is
+  re-validated on every call; file IO is confined to it; runs are user-initiated
+  only.
+- **Main-only settings** — `env:` settings choose the executables the main
+  process spawns, so the renderer can neither read nor write them. Links are
+  opened only if they are `https:`.
 - **Loopback only** — keep the server on `127.0.0.1`. `--allow-cors` (needed by
-  the Raw panel) is safe only on loopback; the Local Server panel warns on any
-  non-loopback host.
+  the Raw panel) is safe only on loopback; the Local Server panel warns, and the
+  main process asks before binding to any other host. The renderer may choose
+  only the host, port and base path; the launch flags are fixed.
+- **Generated code escapes its values** — locators, typed text and server
+  context names are escaped for each target language, because the Tests panel
+  runs the generated `.py`, `.robot`, `.rb` and `.js` files.
+- **URL state is sanitized** — in the browser/plugin builds, a `?state=` link may
+  set capabilities and a local/remote server only, never a cloud vendor's
+  settings (which hold saved credentials); auto-start asks first when the link
+  changed the server.
 
 ---
 

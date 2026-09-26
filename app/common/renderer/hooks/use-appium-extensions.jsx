@@ -3,8 +3,9 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 // Renderer-side counterpart to appium-extensions.js. One instance manages one
 // extension kind ('driver' or 'plugin'). Mutating ops stream their output over
 // the shared 'process:output' channel (filtered to the op's runId) and refresh
-// the list on completion. Third-party / unknown installs come back as
-// `needs_confirmation` so the UI can require explicit consent before retrying.
+// the list on completion. Third-party / unknown installs are confirmed by the
+// user in a native dialog shown by the main process; declining returns
+// `cancelled`.
 
 const ext = window.electronIPC?.extensions;
 const runner = window.electronIPC?.runner;
@@ -17,7 +18,6 @@ export function useAppiumExtensions(type) {
   const [loading, setLoading] = useState(false);
   const [op, setOp] = useState(null); // {kind, name, status: 'running'|'done'|'error', runId}
   const [opLog, setOpLog] = useState([]); // [{stream, chunk}]
-  const [confirm, setConfirm] = useState(null); // {kind, name, source?, type} | null
   const opRunId = useRef(null);
 
   const refresh = useCallback(
@@ -64,22 +64,24 @@ export function useAppiumExtensions(type) {
     };
   }, [refresh]);
 
-  // Interpret a main-process result: either a started op or a consent request.
-  const handleResult = useCallback(
-    (res, meta) => {
-      if (res?.status === 'started') {
-        opRunId.current = res.runId;
-        setOpLog([]);
-        setOp({...meta, status: 'running', runId: res.runId});
-        setConfirm(null);
-      } else if (res?.status === 'needs_confirmation') {
-        // kind: 'not_official' (unknown short-name) | 'third_party' (explicit source)
-        setConfirm({kind: res.kind, name: res.name, source: res.source ?? 'npm', type});
-      }
-      return res;
-    },
-    [type],
-  );
+  // Interpret a main-process result: a started op, or an install the user declined.
+  const handleResult = useCallback((res, meta) => {
+    if (res?.status === 'started') {
+      opRunId.current = res.runId;
+      setOpLog([]);
+      setOp({...meta, status: 'running', runId: res.runId});
+    } else if (res?.status === 'cancelled') {
+      setOpLog([
+        {
+          stream: 'stdout',
+          chunk: `${meta.kind} of ${meta.name} cancelled
+`,
+        },
+      ]);
+      setOp({...meta, status: 'cancelled'});
+    }
+    return res;
+  }, []);
 
   const install = useCallback(
     (opts) => ext.install({type, ...opts}).then((r) => handleResult(r, {kind: 'install', name: opts.name})),
@@ -104,8 +106,6 @@ export function useAppiumExtensions(type) {
     loading,
     op,
     opLog,
-    confirm,
-    clearConfirm: () => setConfirm(null),
     refresh,
     install,
     update,

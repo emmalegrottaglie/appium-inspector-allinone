@@ -19,8 +19,7 @@ const hasUpdate = (entry) => isInstalled(entry) && (entry.updateVersion != null 
  */
 const ExtensionManager = ({type}) => {
   const {t} = useTranslation();
-  const {items, loading, op, opLog, confirm, clearConfirm, refresh, install, update, uninstall, doctor} =
-    useAppiumExtensions(type);
+  const {items, loading, op, opLog, refresh, install, update, uninstall, doctor} = useAppiumExtensions(type);
   const [name, setName] = useState('');
   const logRef = useRef(null);
 
@@ -37,12 +36,6 @@ const ExtensionManager = ({type}) => {
     const bi = isInstalled(b[1]) ? 0 : 1;
     return ai - bi || a[0].localeCompare(b[0]);
   });
-
-  const confirmInstall = () => {
-    const c = confirm;
-    clearConfirm();
-    install({name: c.name, source: c.source || 'npm', allowThirdParty: true});
-  };
 
   return (
     <Space direction="vertical" size="middle" className={styles.fill}>
@@ -66,33 +59,6 @@ const ExtensionManager = ({type}) => {
         </Button>
         <Button icon={<IconRefresh size={16} />} onClick={() => refresh()} disabled={busy} />
       </Space.Compact>
-
-      {confirm && (
-        <Alert
-          type="warning"
-          showIcon
-          message={
-            confirm.kind === 'third_party'
-              ? `Install "${confirm.name}" from ${confirm.source}?`
-              : `"${confirm.name}" is not an official ${type}.`
-          }
-          description={
-            confirm.kind === 'third_party'
-              ? 'Third-party extensions are installed at your own risk.'
-              : `Install it from npm anyway? Only do this if you trust the package.`
-          }
-          action={
-            <Space direction="vertical">
-              <Button size="small" danger onClick={confirmInstall}>
-                {t('Install anyway')}
-              </Button>
-              <Button size="small" onClick={clearConfirm}>
-                {t('Cancel')}
-              </Button>
-            </Space>
-          }
-        />
-      )}
 
       <Spin spinning={loading && entries.length === 0}>
         {entries.length === 0 ? (
