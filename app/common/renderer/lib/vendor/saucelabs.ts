@@ -11,6 +11,7 @@ const SAUCE_OPTIONS_CAP = 'sauce:options';
 // hostname, so anything else (e.g. from a crafted session file) must be refused rather than
 // letting it redirect the credentialed request to another host.
 const SAUCE_DATA_CENTERS = ['us-west-1', 'us-east-4', 'eu-central-1'];
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
 
 export class SaucelabsVendor extends BaseVendor {
   override async configureProperties(): Promise<void> {
@@ -34,6 +35,14 @@ export class SaucelabsVendor extends BaseVendor {
       host = (sauce.scHost as string | undefined) || 'localhost';
       port = parseInt(String(sauce.scPort), 10) || 4445;
       https = false;
+      // The proxy host can come from an imported session file, and the credentials would reach
+      // it unencrypted, so a proxy on another machine needs the user's go-ahead
+      if (
+        !LOCAL_HOSTS.includes(host.toLowerCase()) &&
+        !window.confirm(i18n.t('sauceConnectProxyConfirmation', {host}))
+      ) {
+        throw new Error(`${i18n.t('Sauce Labs credentials were not sent to:')} ${host}`);
+      }
     } else {
       const dataCenter = String(sauce.dataCenter ?? '');
       if (!SAUCE_DATA_CENTERS.includes(dataCenter)) {
