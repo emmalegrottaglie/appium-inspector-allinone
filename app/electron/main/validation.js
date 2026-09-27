@@ -2,12 +2,16 @@
 // tested directly. Each one guards a main-process operation the renderer may only request,
 // never define (see AGENTS.md §7).
 
-// Settings under this prefix choose executables the main process spawns (see
-// binary-resolver.js), so the renderer may neither read nor write them.
-const MAIN_ONLY_SETTINGS_PREFIX = 'env:';
+import net from 'node:net';
+
+// Settings keys the renderer may use. electron-settings reads a key as a lodash key path, so
+// only plain names are accepted: anything with '.', '[' or ':' could reach another setting,
+// including the main-only `env:` settings that choose the executables the main process spawns
+// (see binary-resolver.js), and an empty key would read the whole store.
+const RENDERER_SETTING_KEY = /^[A-Za-z0-9_]+$/;
 
 export function assertRendererSettingKey(key) {
-  if (typeof key !== 'string' || key.startsWith(MAIN_ONLY_SETTINGS_PREFIX)) {
+  if (typeof key !== 'string' || !RENDERER_SETTING_KEY.test(key)) {
     throw new Error(`Setting not available to the renderer: ${String(key)}`);
   }
 }
@@ -24,7 +28,6 @@ export function isOpenableLink(link) {
 export const LOOPBACK_HOSTS = ['127.0.0.1', 'localhost', '::1'];
 
 const HOSTNAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*$/;
-const IPV6 = /^[0-9A-Fa-f:.]*:[0-9A-Fa-f:.]*$/;
 const BASE_PATH = /^\/[A-Za-z0-9._~/-]*$/;
 
 /**
@@ -34,7 +37,7 @@ const BASE_PATH = /^\/[A-Za-z0-9._~/-]*$/;
  * @returns {{host: string, port: number, basePath: string}}
  */
 export function validateServerConfig({host, port, basePath} = {}) {
-  if (typeof host !== 'string' || !(HOSTNAME.test(host) || IPV6.test(host))) {
+  if (typeof host !== 'string' || !(HOSTNAME.test(host) || net.isIP(host) === 6)) {
     throw new Error(`Invalid server host: ${String(host)}`);
   }
   const portNumber = Number(port);

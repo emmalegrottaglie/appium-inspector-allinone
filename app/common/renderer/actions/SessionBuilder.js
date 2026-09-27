@@ -936,8 +936,12 @@ export function setPortFromUrl() {
   };
 }
 
-// Where a session would be started for the local/remote server types a URL may select
-function describeServerUrl({serverType, server}) {
+// Where a session started now would run: the URL for a local/remote server, otherwise the
+// cloud provider, whose connection details a link cannot set
+function describeSessionTarget({serverType, server}) {
+  if (serverType !== SERVER_TYPES.LOCAL && serverType !== SERVER_TYPES.REMOTE) {
+    return serverType;
+  }
   const {hostname, port, path, ssl} = server[serverType] || {};
   const serverPath = path || DEFAULT_SERVER_PROPS.path;
   return `${ssl ? 'https' : 'http'}://${hostname || DEFAULT_SERVER_PROPS.hostname}:${port || DEFAULT_SERVER_PROPS.port}${serverPath === '/' ? '' : serverPath}`;
@@ -955,7 +959,6 @@ export function initFromQueryString(loadNewSession) {
     const initialState = url.searchParams.get('state');
     const autoStartSession = url.searchParams.get('autoStart');
 
-    let changesServer = false;
     if (initialState) {
       let parsedState;
       try {
@@ -966,8 +969,7 @@ export function initFromQueryString(loadNewSession) {
       if (parsedState !== undefined) {
         // Anyone can craft this link, so only the parts that cannot redirect saved
         // credentials are applied
-        const {state, dropped, changesServer: urlChangesServer} = sanitizeUrlState(parsedState);
-        changesServer = urlChangesServer;
+        const {state, dropped} = sanitizeUrlState(parsedState);
         if (dropped.length) {
           log.warn(`Ignored state from URL that a link may not set: ${dropped.join(', ')}`);
         }
@@ -976,10 +978,10 @@ export function initFromQueryString(loadNewSession) {
     }
 
     if (autoStartSession === AUTO_START_URL_PARAM) {
-      // A link that picks the server must not also start a session on it unprompted
+      // Anyone can craft the link, and a session starts with its capabilities on whichever
+      // server is selected (possibly a cloud account), so the user confirms first
       if (
-        changesServer &&
-        !window.confirm(i18n.t('startSessionFromLinkConfirmation', {url: describeServerUrl(getState().builder)}))
+        !window.confirm(i18n.t('startSessionFromLinkConfirmation', {target: describeSessionTarget(getState().builder)}))
       ) {
         return;
       }

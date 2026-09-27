@@ -412,16 +412,19 @@ cert.
   through the constrained endpoints (`appium:*`, `extensions:*`, `python:*`).
 - **Consent from the main process** — risky actions are approved by the user in
   a native dialog shown by the main process (`user-approval.js`); the renderer
-  cannot grant consent itself.
+  cannot grant consent itself. The main window still runs with Node integration
+  on and context isolation off, so these main-process checks are defense in
+  depth until renderer isolation is enabled.
 - **Extensions** — official names install with no source; unknown names and
   third-party sources need that consent; only npm + https GitHub accepted;
-  git/local refused; major updates require `unsafe: true`.
+  git/local refused; major updates (`unsafe: true`) need that consent too.
 - **Python** — deps in an isolated venv; non-managed packages need consent; only
   a working dir picked in the native dialog this session is accepted, and it is
   re-validated on every call; file IO is confined to it; runs are user-initiated
   only.
 - **Main-only settings** — `env:` settings choose the executables the main
-  process spawns, so the renderer can neither read nor write them. Links are
+  process spawns, so the renderer can neither read nor write them (only plain
+  setting names are accepted, since keys are read as key paths). Links are
   opened only if they are `https:`.
 - **Loopback only** — keep the server on `127.0.0.1`. `--allow-cors` (needed by
   the Raw panel) is safe only on loopback; the Local Server panel warns, and the
@@ -432,8 +435,9 @@ cert.
   runs the generated `.py`, `.robot`, `.rb` and `.js` files.
 - **URL state is sanitized** — in the browser/plugin builds, a `?state=` link may
   set capabilities and a local/remote server only, never a cloud vendor's
-  settings (which hold saved credentials); auto-start asks first when the link
-  changed the server.
+  settings (which hold saved credentials); auto-start always asks first.
+- **Sauce Labs** — HTTPS and an allowlisted data center; a Sauce Connect proxy
+  on another machine (plain HTTP) is confirmed before credentials are sent.
 
 ---
 

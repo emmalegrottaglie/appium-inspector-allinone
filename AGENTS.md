@@ -241,20 +241,29 @@ npm run pack:electron                                # installer (.exe) + zip (u
   regexes and **may never start with `-`** (argument-injection guard). Test file
   paths are confined to the chosen working dir (path-traversal guard).
 - The open `process:start` "spawn anything" IPC is **dev-only**.
+- **Limit of the IPC guards below.** The main window still runs with
+  `nodeIntegration: true` and `contextIsolation: false` (`windows.js`), so code
+  running in the renderer can use Node directly and does not need IPC at all.
+  The guards stop a renderer bug or a crafted value from turning an IPC call
+  into something the user did not choose; they only become a hard boundary once
+  renderer isolation is enabled (preload switched to `contextBridge`). Keep
+  writing them as if that were already the case.
 - **Consent comes from MAIN, never from the renderer.** Anything the user must
   approve is asked in a native dialog by `user-approval.js`; there is no
   renderer-supplied "allowed" flag to trust.
   - Extensions: official names install with no `--source`; unknown names and
     explicit sources are validated, then confirmed by the user in the dialog;
-    only npm + https GitHub accepted; git/local refused; major updates require
-    `unsafe:true`.
+    only npm + https GitHub accepted; git/local refused; major updates
+    (`unsafe:true`) are confirmed in the dialog too.
   - Python: managed set (`Appium-Python-Client`, `pytest`, `robotframework*`)
     installs without prompt; anything else is confirmed in the dialog.
 - **Working directories come from the picker registry.** Only a directory the
   user chose in `pickWorkingDir()` this session passes `assertApprovedDir()`;
   every `python:*` file/run call and `runtimes:installJsDeps` checks it.
 - **`env:` settings are main-only.** They pick the executables MAIN spawns
-  (`binary-resolver.js`), so `settings:has/get/set` refuse any `env:` key.
+  (`binary-resolver.js`). electron-settings reads keys as lodash key paths, so
+  `settings:has/get/set` accept only plain names (`[A-Za-z0-9_]+`), which rules
+  out `env:` keys and any path (`["env:x"]`, `a.b`, `''`) that could reach them.
   `electron:openLink` opens `https:` links only.
 - **`appium:start` takes only `host`/`port`/`basePath`** (validated in
   `validation.js`); plugins, CORS and insecure features are fixed by MAIN.
@@ -270,8 +279,12 @@ npm run pack:electron                                # installer (.exe) + zip (u
   raw inside quotes (`'${x}'`) or with `JSON.stringify` in Ruby/Robot.
 - **URL state is sanitized** (`utils/url-state.js`): a `?state=` link may set
   caps, an attach session id and the local/remote server only; vendor slices
-  (saved credentials) and advanced options are dropped, and auto-start asks
-  first when the link changed the server.
+  (saved credentials) and advanced options are dropped, and auto-start always
+  asks first, since the session would run on whichever server is selected.
+- **Sauce Labs** uses HTTPS and an allowlisted data center. The Sauce Connect
+  proxy is plain HTTP, so a proxy host other than this machine is confirmed
+  before the credentials are sent to it (the host can come from a session
+  file).
 
 ---
 

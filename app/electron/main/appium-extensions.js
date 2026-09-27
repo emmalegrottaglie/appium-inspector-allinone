@@ -20,7 +20,7 @@ import {confirmWithUser} from './user-approval.js';
 //   4. Limited sources      - only 'npm' and 'github' accepted; 'git' and
 //                             'local' (arbitrary URLs / filesystem paths) are
 //                             refused outright -- highest-risk install vectors.
-//   5. Explicit --unsafe     - major-version updates require unsafe:true opt-in.
+//   5. Explicit --unsafe     - major-version updates require unsafe:true plus the user's consent.
 //   6. Isolated APPIUM_HOME  - installs land in an app-scoped home (appium-launch).
 //   7. Concurrency guard     - no overlapping ops on the same extension.
 //   8. No `run` subcommand   - executing extension-defined scripts is not exposed.
@@ -190,7 +190,17 @@ async function update(sender, {type, name, unsafe = false}) {
   }
   const args = [type, 'update', name, '--json'];
   if (unsafe) {
-    args.push('--unsafe'); // major-version bumps: explicit opt-in only
+    // major-version bumps can break existing tests, so the user confirms them here
+    const target = name === 'installed' ? `every installed ${type}` : `the ${type} "${name}"`;
+    const approved = await confirmWithUser(sender, {
+      message: `Update ${target} to a new major version?`,
+      detail: 'Major versions can contain breaking changes.',
+      confirmLabel: 'Update',
+    });
+    if (!approved) {
+      return {status: 'cancelled'};
+    }
+    args.push('--unsafe');
   }
   return spawnExt(sender, type, name, args);
 }

@@ -10,7 +10,6 @@ describe('utils/url-state.js', function () {
       expect(sanitizeUrlState({caps: CAPS, attachSessId: 'abc'})).toEqual({
         state: {caps: CAPS, attachSessId: 'abc'},
         dropped: [],
-        changesServer: false,
       });
     });
 
@@ -19,7 +18,6 @@ describe('utils/url-state.js', function () {
       expect(sanitizeUrlState({serverType: 'remote', server})).toEqual({
         state: {serverType: 'remote', server},
         dropped: [],
-        changesServer: true,
       });
     });
 

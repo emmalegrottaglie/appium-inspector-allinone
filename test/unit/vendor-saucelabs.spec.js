@@ -35,4 +35,21 @@ describe('SaucelabsVendor', function () {
       https: false,
     });
   });
+
+  it('should ask before sending the credentials to a proxy on another host', async function () {
+    const confirm = vi.fn(() => false);
+    vi.stubGlobal('window', {confirm});
+    try {
+      await expect(configure({useSCProxy: true, scHost: 'attacker.example', scPort: 80})).rejects.toThrow(
+        'Sauce Labs credentials were not sent to: attacker.example',
+      );
+      expect(confirm).toHaveBeenCalledOnce();
+      confirm.mockReturnValue(true);
+      expect((await configure({useSCProxy: true, scHost: 'sc-proxy.corp', scPort: 4445})).host).toEqual(
+        'sc-proxy.corp',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

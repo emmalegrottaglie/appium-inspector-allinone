@@ -11,7 +11,7 @@ describe('electron/main/validation.js', function () {
       },
     );
 
-    it.each(['env:appiumPath', 'env:pythonPath', 'env:anything', undefined, 1])(
+    it.each(['env:appiumPath', 'env:pythonPath', 'env:anything', '["env:pythonPath"]', 'a.b', '', undefined, 1])(
       'should refuse %j, which the renderer may not touch',
       function (key) {
         expect(() => assertRendererSettingKey(key)).toThrow('Setting not available to the renderer');
@@ -43,16 +43,24 @@ describe('electron/main/validation.js', function () {
       ).toEqual({host: '127.0.0.1', port: 4723, basePath: '/'});
     });
 
-    it.each(['localhost', '0.0.0.0', '::1', 'my-host.local'])('should accept the host %s', function (host) {
+    it.each(['localhost', '0.0.0.0', '::1', 'fe80::1', 'my-host.local'])('should accept the host %s', function (host) {
       expect(validateServerConfig({host, port: 4723, basePath: '/wd/hub'}).host).toEqual(host);
     });
 
-    it.each(['--allow-insecure=*:adb_shell', '-h', '', 'a b', 'host;calc', undefined])(
-      'should refuse the host %j',
-      function (host) {
-        expect(() => validateServerConfig({host, port: 4723, basePath: '/'})).toThrow('Invalid server host');
-      },
-    );
+    it.each([
+      '--allow-insecure=*:adb_shell',
+      '-h',
+      '',
+      'a b',
+      'host;calc',
+      ':',
+      ':::::',
+      '1.2.3:4',
+      '[::1]',
+      undefined,
+    ])('should refuse the host %j', function (host) {
+      expect(() => validateServerConfig({host, port: 4723, basePath: '/'})).toThrow('Invalid server host');
+    });
 
     it.each([0, 65536, 1.5, 'abc', '4723 --x'])('should refuse the port %j', function (port) {
       expect(() => validateServerConfig({host: '127.0.0.1', port, basePath: '/'})).toThrow('Invalid server port');

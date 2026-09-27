@@ -15,14 +15,14 @@ const hasFieldType = (field, value) => [URL_SERVER_FIELDS[field]].flat().include
  * link may safely set: capabilities, a session id to attach to, and a local or remote server.
  *
  * @param {unknown} state parsed `state` query parameter
- * @returns {{state: object, dropped: string[], changesServer: boolean}} the allowed state, the
- * paths of everything removed, and whether the allowed state changes which server is used
+ * @returns {{state: object, dropped: string[]}} the allowed state and the paths of everything
+ * removed
  */
 export function sanitizeUrlState(state) {
   const allowed = {};
   const dropped = [];
   if (!isPlainObject(state)) {
-    return {state: allowed, dropped: ['(state is not an object)'], changesServer: false};
+    return {state: allowed, dropped: ['(state is not an object)']};
   }
 
   for (const [key, value] of Object.entries(state)) {
@@ -53,5 +53,5 @@ export function sanitizeUrlState(state) {
     }
   }
 
-  return {state: allowed, dropped, changesServer: 'serverType' in allowed || 'server' in allowed};
+  return {state: allowed, dropped};
 }

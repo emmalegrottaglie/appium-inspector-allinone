@@ -1,4 +1,5 @@
 import http from 'node:http';
+import net from 'node:net';
 
 import {ipcMain} from 'electron';
 
@@ -33,6 +34,9 @@ const POLL_INTERVAL_MS = 600;
 // status: 'stopped' | 'starting' | 'running' | 'stopping' | 'error'
 let server = null; // {runId, sender, status, source, host, port, basePath, plugins, allowCors}
 let pollTimer = null;
+// Set from the first check in start() until the server record exists, so a second start that
+// arrives while this one waits (dialog, binary resolution) returns instead of spawning again.
+let startPending = false;
 
 /** Register the server's IPC channels. Call from setupIPCListeners(). */
 export function setupAppiumIPC() {
@@ -59,15 +63,23 @@ function emit(extra = {}) {
 function statusUrl({host, port, basePath}) {
   // Appium exposes readiness at `<basePath>/status`; basePath defaults to '/'.
   const base = basePath === '/' ? '' : basePath.replace(/\/+$/, '');
-  return `http://${host}:${port}${base}/status`;
+  const urlHost = net.isIP(host) === 6 ? `[${host}]` : host;
+  return `http://${urlHost}:${port}${base}/status`;
 }
 
 function pingStatus(cfg) {
   return new Promise((resolve) => {
-    const req = http.get(statusUrl(cfg), (res) => {
-      res.resume(); // drain
-      resolve(res.statusCode === 200);
-    });
+    let req;
+    try {
+      req = http.get(statusUrl(cfg), (res) => {
+        res.resume(); // drain
+        resolve(res.statusCode === 200);
+      });
+    } catch {
+      // an unusable URL counts as not ready, so polling carries on until the timeout
+      resolve(false);
+      return;
+    }
     req.on('error', () => resolve(false));
     req.setTimeout(1500, () => {
       req.destroy();
@@ -142,10 +154,18 @@ function onServerExit({code, error}) {
 }
 
 async function start(sender, userCfg = {}) {
-  if (server && (server.status === 'starting' || server.status === 'running')) {
+  if (startPending || (server && (server.status === 'starting' || server.status === 'running'))) {
     return publicState();
   }
+  startPending = true;
+  try {
+    return await launchServer(sender, userCfg);
+  } finally {
+    startPending = false;
+  }
+}
 
+async function launchServer(sender, userCfg) {
   // The renderer may choose only where the server listens; the launch flags stay main-owned.
   let cfg;
   try {
@@ -163,10 +183,6 @@ async function start(sender, userCfg = {}) {
       confirmLabel: 'Start anyway',
     });
     if (!approved) {
-      return publicState();
-    }
-    // the dialog awaited user input, so another start may have happened meanwhile
-    if (server && (server.status === 'starting' || server.status === 'running')) {
       return publicState();
     }
   }
