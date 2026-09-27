@@ -69,6 +69,8 @@ const SourceTab = (props) => {
     min: canAccordionCollapse && collapsed ? PANEL_HEADER_HEIGHT : defaultMin,
   });
 
+  const orientation = isNarrow ? 'vertical' : 'horizontal';
+
   const appSourceSizing = getPanelSizing(appSourceCollapsed, hasSelectedElement ? undefined : 100, 210);
   const selectedElementSizing = getPanelSizing(selectedElementCollapsed, undefined, 250);
 
@@ -82,8 +84,14 @@ const SourceTab = (props) => {
     // would land. If that happens while this is still reporting the old
     // orientation, Splitter reads the wrong axis (width vs height) and
     // caches a stale container size, leaving panels stuck at the wrong
-    // size until another resize happens to nudge it again.
+    // size until another resize happens to nudge it again. Splitter is also
+    // keyed by orientation below, since its observer always runs first.
     const observer = new ResizeObserver(([entry]) => {
+      // A hidden tab (e.g. while another inspector tab is open) measures 0.
+      // Keep the current layout then instead of switching to the stacked one.
+      if (entry.contentRect.width === 0) {
+        return;
+      }
       setIsNarrow(entry.contentRect.width < NARROW_LAYOUT_BREAKPOINT);
     });
     observer.observe(container);
@@ -92,7 +100,10 @@ const SourceTab = (props) => {
 
   return (
     <div ref={containerRef} className={styles.sourceTabContainer}>
-      <Splitter orientation={isNarrow ? 'vertical' : 'horizontal'}>
+      {/* Splitter caches its container size along the orientation it had when it last
+          measured, and switching orientation doesn't change its element's size, so nothing
+          makes it measure again. A fresh instance per orientation measures the right axis. */}
+      <Splitter key={orientation} orientation={orientation}>
         <Splitter.Panel collapsible={splitterCollapsible} size={appSourceSizing.size} min={appSourceSizing.min}>
           <AppSource
             {...props}
