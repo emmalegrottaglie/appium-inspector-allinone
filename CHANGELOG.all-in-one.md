@@ -88,6 +88,13 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
 
 ### Fixed
 
+- **Source tab panels stopped filling the tab and could not be widened.** After
+  switching to another inspector tab and back (or resizing while it was hidden),
+  the App Source / Selected Element splitter kept panel sizes computed from the
+  tab's height instead of its width, leaving blank space beside the Selected
+  Element panel and wrong drag limits. The hidden tab no longer switches to the
+  stacked layout, and the splitter is recreated when the layout changes, so it
+  always measures along the right axis. (Upstream code; worth offering upstream.)
 - **Generated JS/TS tests failed at the first `mobile:` command.** The
   WebdriverIO generator emitted `driver.executeScript("mobile: ...")` with a
   single argument, but WebdriverIO requires both parameters and rejects that call
