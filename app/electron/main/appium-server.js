@@ -28,11 +28,16 @@ const DEFAULTS = {
   insecureFeatures: ['*:session_discovery'],
 };
 
-const READINESS_TIMEOUT_MS = 30_000;
+// Give up on a starting server only after it has been silent this long. A cold start (empty
+// file cache, antivirus scanning every module) loads Appium and each installed driver slowly:
+// measured at 37 s on a 3-driver setup, with gaps of up to 17 s between log lines, against 2 s
+// warm. A fixed total timeout killed servers that were still loading, so the limit only
+// catches a server that stops making progress.
+const READINESS_IDLE_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 600;
 
 // status: 'stopped' | 'starting' | 'running' | 'stopping' | 'error'
-let server = null; // {runId, sender, status, source, host, port, basePath, plugins, allowCors}
+let server = null; // {runId, sender, status, source, host, port, basePath, plugins, allowCors, lastOutputAt, failure}
 let pollTimer = null;
 // Set from the first check in start() until the server record exists, so a second start that
 // arrives while this one waits (dialog, binary resolution) returns instead of spawning again.
@@ -113,7 +118,6 @@ function clearPoll() {
 
 function startReadinessPolling() {
   const cfg = {...server};
-  const startedAt = Date.now();
 
   const tick = async () => {
     if (!server || server.status !== 'starting' || server.runId !== cfg.runId) {
@@ -124,9 +128,9 @@ function startReadinessPolling() {
       emit();
       return;
     }
-    if (Date.now() - startedAt > READINESS_TIMEOUT_MS) {
-      emit({error: 'Timed out waiting for Appium to become ready'});
-      cancelProcess(server.runId); // onExit will finalize state
+    if (Date.now() - server.lastOutputAt > READINESS_IDLE_TIMEOUT_MS) {
+      server.failure = `Appium did not become ready and printed nothing for ${READINESS_IDLE_TIMEOUT_MS / 1000} s`;
+      cancelProcess(server.runId); // onServerExit reports the failure
       return;
     }
     pollTimer = setTimeout(tick, POLL_INTERVAL_MS);
@@ -143,9 +147,9 @@ function onServerExit({code, error}) {
   if (server.status === 'stopping') {
     server.status = 'stopped';
     emit();
-  } else if (error || (code !== 0 && code !== null)) {
+  } else if (server.failure || error || (code !== 0 && code !== null)) {
     server.status = 'error';
-    emit({error: error || `Appium exited with code ${code}`});
+    emit({error: server.failure || error || `Appium exited with code ${code}`});
   } else {
     server.status = 'stopped';
     emit();
@@ -196,10 +200,17 @@ async function launchServer(sender, userCfg) {
   const {runId} = startProcess(
     sender,
     {command: launch.command, args: launch.args, options: launch.options},
-    {onExit: onServerExit},
+    {
+      onOutput: () => {
+        if (server?.runId === runId) {
+          server.lastOutputAt = Date.now();
+        }
+      },
+      onExit: onServerExit,
+    },
   );
 
-  server = {runId, sender, status: 'starting', source: launch.source, ...cfg};
+  server = {runId, sender, status: 'starting', source: launch.source, ...cfg, lastOutputAt: Date.now()};
   emit();
   startReadinessPolling();
   return publicState();
