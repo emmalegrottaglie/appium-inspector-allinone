@@ -1,4 +1,4 @@
-import {IconFocus2, IconX} from '@tabler/icons-react';
+import {IconFocus2, IconGripVertical, IconX} from '@tabler/icons-react';
 import {Button, Card, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
@@ -27,12 +27,15 @@ const deleteTick = (pointerKey, tickKey, pointers, setPointers, unselectTick) =>
  */
 const GestureEditorTickCardHeaderButtons = ({tick, pointers, setPointers, selectedTick, selectTick, unselectTick}) => {
   const {t} = useTranslation();
+  const togglePickerLabel = t('toggleMoveActionCoordPicker');
+  const deleteLabel = t('Delete');
 
   return (
     <>
       {tick.type === POINTER_TYPES.POINTER_MOVE && (
-        <Tooltip title={t('toggleMoveActionCoordPicker')}>
+        <Tooltip title={togglePickerLabel}>
           <Button
+            aria-label={togglePickerLabel}
             size="small"
             type={selectedTick === tick.id ? 'primary' : 'text'}
             icon={<IconFocus2 size={18} />}
@@ -40,8 +43,9 @@ const GestureEditorTickCardHeaderButtons = ({tick, pointers, setPointers, select
           />
         </Tooltip>
       )}
-      <Tooltip title={t('Delete')}>
+      <Tooltip title={deleteLabel}>
         <Button
+          aria-label={deleteLabel}
           size="small"
           type="text"
           icon={<IconX size={18} />}
@@ -55,23 +59,52 @@ const GestureEditorTickCardHeaderButtons = ({tick, pointers, setPointers, select
 /**
  * Wrapper card for a single tick in the gesture editor.
  */
-const GestureEditorTickCard = ({children, tick, pointers, setPointers, selectedTick, selectTick, unselectTick}) => (
-  <Card
-    hoverable={true}
-    className={styles.tickCard}
-    extra={
-      <GestureEditorTickCardHeaderButtons
-        tick={tick}
-        pointers={pointers}
-        setPointers={setPointers}
-        selectedTick={selectedTick}
-        selectTick={selectTick}
-        unselectTick={unselectTick}
-      />
-    }
-  >
-    {children}
-  </Card>
-);
+const GestureEditorTickCard = ({
+  children,
+  tick,
+  dragHandleRef,
+  dragDisabled,
+  isDropTarget,
+  pointers,
+  setPointers,
+  selectedTick,
+  selectTick,
+  unselectTick,
+}) => {
+  const {t} = useTranslation();
+
+  return (
+    <Card
+      className={isDropTarget && styles.tickCardDropTarget}
+      styles={{
+        root: {display: 'flex', flexDirection: 'column'},
+        header: {padding: '0px', minHeight: 'unset', borderBottom: 'none'},
+        body: {padding: '4px 8px 8px 8px'},
+      }}
+      // Keep the hidden handle mounted so dnd-kit does not mark the whole card as aria-disabled.
+      title={
+        <IconGripVertical
+          size={18}
+          aria-label={t('dragToReorder')}
+          className={styles.tickDragHandle}
+          ref={dragHandleRef}
+          visibility={dragDisabled ? 'hidden' : undefined}
+        />
+      }
+      extra={
+        <GestureEditorTickCardHeaderButtons
+          tick={tick}
+          pointers={pointers}
+          setPointers={setPointers}
+          selectedTick={selectedTick}
+          selectTick={selectTick}
+          unselectTick={unselectTick}
+        />
+      }
+    >
+      {children}
+    </Card>
+  );
+};
 
 export default GestureEditorTickCard;

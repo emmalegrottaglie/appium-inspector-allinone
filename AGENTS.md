@@ -311,8 +311,14 @@ git diff --name-only --diff-filter=U                     # list conflicts
   new `RecorderTabCard.jsx`).
 - **`package.json` conflict:** keep our `fast-xml-parser` + `allowScripts`
   (`electron`/`esbuild`/`sharp`, unversioned) + take upstream's version bump and
-  dep updates. **`package-lock.json`:** `git checkout --theirs` then run
-  `npm install` to regenerate it against the merged `package.json`.
+  dep updates. **`package-lock.json`:** start from `git checkout --theirs`, then
+  add only our packages (`fast-xml-parser` and its deps) and our root
+  `dependencies`. Don't keep the file `npm install` writes on Windows: npm there
+  drops the `libc` fields upstream's lockfile carries (~50 entries), which would
+  churn the lock and conflict again on every merge. Run `npm install` to update
+  `node_modules`, then restore the lock as upstream's plus our additions (check
+  with `git diff upstream/main -- package-lock.json`: only our packages should
+  differ).
 - After resolving: `npm install`, approve pending install scripts if needed (§9),
   `npm run build:electron` to **verify our features still compile against the
   bumped deps**, lint, then commit the merge and push. If the build can't be made

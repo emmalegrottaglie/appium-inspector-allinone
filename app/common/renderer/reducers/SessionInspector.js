@@ -20,7 +20,6 @@ import {
   HIDE_GESTURE_EDITOR,
   HIDE_LOCATOR_SEARCH_MODAL,
   HIDE_PROMPT_KEEP_ALIVE,
-  HIDE_SIRI_COMMAND_MODAL,
   METHOD_CALL_DONE,
   METHOD_CALL_REQUESTED,
   PAUSE_RECORDING,
@@ -45,10 +44,8 @@ import {
   SET_CONTEXT,
   SET_COORD_END,
   SET_COORD_START,
-  SET_CURRENT_DISPLAY_ID,
   SET_EXPANDED_PATHS,
   SET_FLAT_SESSION_CAPS,
-  SET_FOUND_DISPLAYS,
   SET_GESTURE_TAP_COORDS_MODE,
   SET_INTERACTIONS_NOT_AVAILABLE,
   SET_KEEP_ALIVE_INTERVAL,
@@ -67,13 +64,11 @@ import {
   SET_SESSION_TIME,
   SET_SHOW_BOILERPLATE,
   SET_SHOW_CENTROIDS,
-  SET_SIRI_COMMAND_VALUE,
   SET_SOURCE_AND_SCREENSHOT,
   SET_USER_WAIT_TIMEOUT,
   SHOW_GESTURE_ACTION,
   SHOW_GESTURE_EDITOR,
   SHOW_LOCATOR_SEARCH_MODAL,
-  SHOW_SIRI_COMMAND_MODAL,
   START_RECORDING,
   STORE_SESSION_SETTINGS,
   TOGGLE_SHOW_ATTRIBUTES,
@@ -88,7 +83,6 @@ import {omit} from '../utils/common.js';
 const INITIAL_STATE = {
   savedGestures: [],
   driver: null,
-  automationName: null,
   keepAliveInterval: null,
   showKeepAlivePrompt: false,
   userWaitTimeout: null,
@@ -101,11 +95,10 @@ const INITIAL_STATE = {
   clientFramework: CLIENT_FRAMEWORKS.JAVA_JUNIT4,
   serverDetails: {},
   sessionCaps: {},
+  featureCaps: {},
   sessionSettings: {},
   isGestureEditorVisible: false,
   isLocatorSearchModalVisible: false,
-  isSiriCommandModalVisible: false,
-  siriCommandValue: '',
   showCentroids: false,
   locatorSearchStrategy: 'id',
   locatorSearchValue: '',
@@ -285,13 +278,12 @@ export default function inspector(state = INITIAL_STATE, action) {
       return {...state, showBoilerplate: action.show};
 
     case SET_SESSION_DETAILS: {
-      const automationName = action.driver.capabilities.automationName;
       return {
         ...state,
         serverDetails: action.serverDetails,
         driver: action.driver,
         sessionCaps: action.sessionCaps,
-        automationName: automationName && automationName.toLowerCase(),
+        featureCaps: action.featureCaps,
         appMode: action.appMode,
         isUsingMjpegMode: action.isUsingMjpegMode,
       };
@@ -313,36 +305,6 @@ export default function inspector(state = INITIAL_STATE, action) {
       return {
         ...state,
         isLocatorSearchModalVisible: false,
-      };
-
-    case SHOW_SIRI_COMMAND_MODAL:
-      return {
-        ...state,
-        isSiriCommandModalVisible: true,
-      };
-
-    case HIDE_SIRI_COMMAND_MODAL:
-      return {
-        ...state,
-        isSiriCommandModalVisible: false,
-      };
-
-    case SET_SIRI_COMMAND_VALUE:
-      return {
-        ...state,
-        siriCommandValue: action.siriCommandValue,
-      };
-
-    case SET_FOUND_DISPLAYS:
-      return {
-        ...state,
-        displays: action.displays,
-      };
-
-    case SET_CURRENT_DISPLAY_ID:
-      return {
-        ...state,
-        currentDisplayId: action.displayId,
       };
 
     case SET_LOCATOR_SEARCH_STRATEGY:

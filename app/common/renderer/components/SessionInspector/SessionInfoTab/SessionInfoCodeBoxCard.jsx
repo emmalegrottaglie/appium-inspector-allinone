@@ -26,11 +26,12 @@ const SessionInfoCodeBoxPanelTitle = () => {
  */
 const SessionInfoCodeBoxHeaderOptions = ({clientCode, clientFramework, setClientFramework}) => {
   const {t} = useTranslation();
+  const copyLabel = t('Copy code to clipboard');
 
   return (
-    <Space size="middle">
-      <Tooltip title={t('Copy code to clipboard')}>
-        <Button icon={<IconFiles size={18} />} onClick={() => copyToClipboard(clientCode)} />
+    <Space size="small">
+      <Tooltip title={copyLabel}>
+        <Button aria-label={copyLabel} icon={<IconFiles size={18} />} onClick={() => copyToClipboard(clientCode)} />
       </Tooltip>
       <Select
         defaultValue={clientFramework}
@@ -52,6 +53,7 @@ const SessionInfoCodeBoxHeaderOptions = ({clientCode, clientFramework, setClient
 const SessionInfoCodeBoxCard = ({clientCode, clientFramework, setClientFramework, children}) => (
   <Card
     title={<SessionInfoCodeBoxPanelTitle />}
+    styles={{header: {padding: '0px 8px 0px 16px', minHeight: '48px'}, body: {padding: '12px'}}}
     extra={
       <SessionInfoCodeBoxHeaderOptions
         clientCode={clientCode}

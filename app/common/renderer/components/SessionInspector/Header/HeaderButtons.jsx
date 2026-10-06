@@ -2,8 +2,8 @@ import {Divider, Space} from 'antd';
 
 import {openLink} from '../../../polyfills.js';
 import ContextControlsGroup from './ContextControlsGroup.jsx';
-import DeviceControlsGroup from './DeviceControlsGroup.jsx';
-import DisplayControlsGroup from './DisplayControlsGroup.jsx';
+import DeviceControlsGroup from './DeviceControls/DeviceControlsGroup.jsx';
+import DriverControlsGroup from './DriverControls/DriverControlsGroup.jsx';
 import GeneralControlsGroup from './GeneralControlsGroup.jsx';
 import SessionQuitControlsGroup from './SessionQuitControlsGroup.jsx';
 import SessionReloadButton from './SessionReloadButton.jsx';
@@ -17,44 +17,25 @@ const HeaderButtons = (props) => {
   const {
     selectAppMode,
     appMode,
-    showSiriCommandModal,
     applyClientMethod,
     quitSessionAndReturn,
-    driver,
     contexts,
     currentContext,
     setContext,
     autoSessionRestart,
     toggleAutoSessionRestart,
-    toggleMultiDisplayMode,
-    displays,
-    setCurrentDisplayId,
-    currentDisplayId,
-    automationName,
-    siriCommandValue,
-    setSiriCommandValue,
-    isSiriCommandModalVisible,
-    hideSiriCommandModal,
+    featureCaps,
+    sessionSettings,
   } = props;
 
   return (
     <div className={styles.headerButtons}>
-      <Space size="middle" wrap className={styles.headerButtonsSpace}>
-        <DeviceControlsGroup
-          driver={driver}
+      <Space size={['middle', 'small']} wrap className={styles.headerButtonsSpace}>
+        <DeviceControlsGroup featureCaps={featureCaps} applyClientMethod={applyClientMethod} />
+        <DriverControlsGroup
+          featureCaps={featureCaps}
+          sessionSettings={sessionSettings}
           applyClientMethod={applyClientMethod}
-          showSiriCommandModal={showSiriCommandModal}
-          siriCommandValue={siriCommandValue}
-          setSiriCommandValue={setSiriCommandValue}
-          isSiriCommandModalVisible={isSiriCommandModalVisible}
-          hideSiriCommandModal={hideSiriCommandModal}
-        />
-        <DisplayControlsGroup
-          automationName={automationName}
-          displays={displays}
-          currentDisplayId={currentDisplayId}
-          setCurrentDisplayId={setCurrentDisplayId}
-          toggleMultiDisplayMode={toggleMultiDisplayMode}
         />
         <ContextControlsGroup
           selectAppMode={selectAppMode}
