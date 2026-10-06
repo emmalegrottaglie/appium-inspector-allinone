@@ -1,6 +1,6 @@
 import {IconPlus, IconTrash} from '@tabler/icons-react';
 import {Button, Checkbox, Col, Form, Input, Modal, Row, Select, Space, Splitter, Tooltip} from 'antd';
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 
 import {CAPABILITY_TYPES} from '../../../constants/session-builder.js';
@@ -9,10 +9,6 @@ import CapabilityControl from './CapabilityControl.jsx';
 
 import builderStyles from '../SessionBuilder.module.css';
 import styles from './CapabilityBuilderTab.module.css';
-
-// Below this window width, the JSON preview panel no longer has enough room
-// to sit beside the capability builder panel, so it wraps below it instead.
-const NARROW_LAYOUT_BREAKPOINT = 700;
 
 const whitespaces = /^\s|\s$/;
 
@@ -56,6 +52,7 @@ const handleSetType = (setCapabilityParam, cap, typeVal) => {
 
 const CapabilityEditor = (props) => {
   const {
+    isNarrow,
     setCapabilityParam,
     caps,
     addCapability,
@@ -74,24 +71,12 @@ const CapabilityEditor = (props) => {
   } = props;
 
   const {t} = useTranslation();
+  const addLabel = t('Add');
+  const deleteLabel = t('Delete');
 
   const latestCapFieldRef = useRef(null);
 
-  const [isNarrow, setIsNarrow] = useState(window.innerWidth > 0 && window.innerWidth < NARROW_LAYOUT_BREAKPOINT);
-
   const onSaveAsOk = () => saveSession({server, serverType, caps, name: saveAsText}, true);
-
-  useEffect(() => {
-    // Deliberately not debounced: Splitter measures its container via its
-    // own ResizeObserver, which can fire before a debounced update here
-    // would land. If that happens while this is still reporting the old
-    // orientation, Splitter reads the wrong axis (width vs height) and
-    // caches a stale container size, leaving panels stuck at the wrong
-    // size until another resize happens to nudge it again.
-    const updateIsNarrow = () => setIsNarrow(window.innerWidth < NARROW_LAYOUT_BREAKPOINT);
-    window.addEventListener('resize', updateIsNarrow);
-    return () => window.removeEventListener('resize', updateIsNarrow);
-  }, []);
 
   // if we have more than one cap and the most recent cap name is empty,
   // it means we've just added a new cap field, so focus that input element
@@ -160,8 +145,9 @@ const CapabilityEditor = (props) => {
                         onChange={(e) => setCapabilityParam(cap.id, 'enabled', e.target.checked)}
                       />
                     </Tooltip>
-                    <Tooltip title={t('Delete')} placement="right">
+                    <Tooltip title={deleteLabel} placement="right">
                       <Button
+                        aria-label={deleteLabel}
                         {...{disabled: caps.length <= 1 || isEditingDesiredCaps}}
                         icon={<IconTrash size={18} />}
                         onClick={() => removeCapability(cap.id)}
@@ -173,25 +159,26 @@ const CapabilityEditor = (props) => {
             </Row>
           ))}
           <Row gutter={8}>
-            <Col flex="auto">
-              <Form.Item>
-                <Checkbox checked={addVendorPrefixes} onChange={(e) => setAddVendorPrefixes(e.target.checked)}>
-                  {t('autoAddPrefixes')}
-                </Checkbox>
-              </Form.Item>
+            <Col span={21}>
+              <Checkbox
+                styles={{root: {minHeight: '32px', alignItems: 'center'}}}
+                checked={addVendorPrefixes}
+                onChange={(e) => setAddVendorPrefixes(e.target.checked)}
+              >
+                {t('autoAddPrefixes')}
+              </Checkbox>
             </Col>
-            <Col flex="40px">
-              <Form.Item>
-                <Tooltip title={t('Add')} placement="right">
-                  <Button
-                    disabled={isEditingDesiredCaps}
-                    id="btnAddDesiredCapability"
-                    icon={<IconPlus size={18} />}
-                    onClick={addCapability}
-                    className={styles.addCapabilityButton}
-                  />
-                </Tooltip>
-              </Form.Item>
+            <Col span={3}>
+              <Tooltip title={addLabel} placement="right">
+                <Button
+                  aria-label={addLabel}
+                  disabled={isEditingDesiredCaps}
+                  id="btnAddDesiredCapability"
+                  icon={<IconPlus size={18} />}
+                  onClick={addCapability}
+                  className={styles.addCapabilityButton}
+                />
+              </Tooltip>
             </Col>
           </Row>
         </Form>

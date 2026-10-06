@@ -13,10 +13,12 @@ import styles from './Header.module.css';
  */
 const NoContextsFoundButton = () => {
   const {t} = useTranslation();
+  const noContextsLabel = t('noAdditionalContextsFound');
 
   return (
-    <Tooltip title={t('noAdditionalContextsFound')} classNames={{root: styles.wideTooltip}}>
+    <Tooltip title={noContextsLabel} classNames={{root: styles.wideTooltip}}>
       <Button
+        aria-label={noContextsLabel}
         disabled
         icon={<IconExclamationCircle size={20} />}
         styles={{root: {backgroundColor: '#faad14', color: '#ffffff'}}}
@@ -28,40 +30,46 @@ const NoContextsFoundButton = () => {
 /**
  * Dropdown used to switch contexts.
  */
-const ContextDropdown = ({contexts, currentContext, setContext, applyClientMethod, openLink}) => {
+const ContextsDropdown = ({contexts, currentContext, setContext, applyClientMethod}) => (
+  <Select
+    styles={{root: {width: 350}}}
+    value={currentContext}
+    popupMatchSelectWidth={false}
+    onChange={(value) => {
+      setContext(value);
+      applyClientMethod({methodName: 'switchAppiumContext', args: [value]});
+    }}
+    options={contexts.map(({id, title}) => ({
+      value: id,
+      label: title ? `${title} (${id})` : id,
+    }))}
+  />
+);
+
+/**
+ * Element (disabled button) used to provide extra info regarding additional contexts.
+ */
+const ContextInfoButton = ({openLink}) => {
   const {t} = useTranslation();
+  const contextLabel = t('contextDropdownInfo');
 
   return (
-    <>
-      <Select
-        styles={{root: {width: 350}}}
-        value={currentContext}
-        popupMatchSelectWidth={false}
-        onChange={(value) => {
-          setContext(value);
-          applyClientMethod({methodName: 'switchAppiumContext', args: [value]});
-        }}
-        options={contexts.map(({id, title}) => ({
-          value: id,
-          label: title ? `${title} (${id})` : id,
-        }))}
+    <Tooltip
+      title={
+        <>
+          {contextLabel}{' '}
+          <a onClick={(e) => e.preventDefault() || openLink(LINKS.HYBRID_MODE_DOCS)}>{LINKS.HYBRID_MODE_DOCS}</a>
+        </>
+      }
+      classNames={{root: styles.wideTooltip}}
+    >
+      <Button
+        aria-label={`${contextLabel} ${LINKS.HYBRID_MODE_DOCS}`}
+        disabled
+        icon={<IconInfoCircle size={20} />}
+        styles={{root: {backgroundColor: 'var(--ant-color-primary)', color: '#ffffff'}}}
       />
-      <Tooltip
-        title={
-          <>
-            {t('contextDropdownInfo')}{' '}
-            <a onClick={(e) => e.preventDefault() || openLink(LINKS.HYBRID_MODE_DOCS)}>{LINKS.HYBRID_MODE_DOCS}</a>
-          </>
-        }
-        classNames={{root: styles.wideTooltip}}
-      >
-        <Button
-          disabled
-          icon={<IconInfoCircle size={20} />}
-          styles={{root: {backgroundColor: 'var(--ant-color-primary)', color: '#ffffff'}}}
-        />
-      </Tooltip>
-    </>
+    </Tooltip>
   );
 };
 
@@ -78,18 +86,22 @@ const ContextControlsGroup = ({
   openLink,
 }) => {
   const {t} = useTranslation();
+  const nativeModeLabel = t('Native App Mode');
+  const webModeLabel = t('Web/Hybrid App Mode');
 
   return (
     <Space.Compact>
-      <Tooltip title={t('Native App Mode')}>
+      <Tooltip title={nativeModeLabel}>
         <Button
+          aria-label={nativeModeLabel}
           icon={<IconTriangleSquareCircle size={18} />}
           onClick={() => selectAppMode(APP_MODE.NATIVE)}
           type={appMode === APP_MODE.NATIVE ? BUTTON.PRIMARY : BUTTON.DEFAULT}
         />
       </Tooltip>
-      <Tooltip title={t('Web/Hybrid App Mode')}>
+      <Tooltip title={webModeLabel}>
         <Button
+          aria-label={webModeLabel}
           icon={<IconWorld size={18} />}
           onClick={() => selectAppMode(APP_MODE.WEB_HYBRID)}
           type={appMode === APP_MODE.WEB_HYBRID ? BUTTON.PRIMARY : BUTTON.DEFAULT}
@@ -97,14 +109,14 @@ const ContextControlsGroup = ({
       </Tooltip>
       {contexts && contexts.length === 1 && <NoContextsFoundButton />}
       {contexts && contexts.length > 1 && (
-        <ContextDropdown
+        <ContextsDropdown
           contexts={contexts}
           currentContext={currentContext}
           setContext={setContext}
           applyClientMethod={applyClientMethod}
-          openLink={openLink}
         />
       )}
+      {contexts && contexts.length > 1 && <ContextInfoButton openLink={openLink} />}
     </Space.Compact>
   );
 };

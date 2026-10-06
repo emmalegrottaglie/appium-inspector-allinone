@@ -85,6 +85,10 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
   Raw Command tab.
 - `electron-builder.json` uses an `afterPack` hook instead of `extraResources`
   for the vendored server.
+- Caught up with upstream (101 commits, to `0464e09c`). The Raw Command tab, the
+  Recorder's Save As button (now with an `aria-label`, like upstream's new
+  Recorder buttons) and its `saveAs` prop were re-applied to upstream's
+  refactored `SessionInspectorTabs.jsx`, `RecorderTabCard.jsx` and `Recorder.jsx`.
 
 ### Fixed
 
@@ -94,7 +98,10 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
   tab's height instead of its width, leaving blank space beside the Selected
   Element panel and wrong drag limits. The hidden tab no longer switches to the
   stacked layout, and the splitter is recreated when the layout changes, so it
-  always measures along the right axis. (Upstream code; worth offering upstream.)
+  always measures along the right axis. Superseded by upstream's rewrite of the
+  Source tab (appium/appium-inspector#3127, #3180), which measures the
+  always-visible tabs container instead; the fork now uses upstream's
+  `SourceTab.jsx`.
 - **Generated JS/TS tests failed at the first `mobile:` command.** The
   WebdriverIO generator emitted `driver.executeScript("mobile: ...")` with a
   single argument, but WebdriverIO requires both parameters and rejects that call

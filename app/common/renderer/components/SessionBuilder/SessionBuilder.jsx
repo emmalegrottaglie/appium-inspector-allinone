@@ -1,12 +1,20 @@
+import {bindActionCreators} from '@reduxjs/toolkit';
 import {IconLink} from '@tabler/icons-react';
 import {Badge, Button, Divider, Space, Spin, Tabs} from 'antd';
-import {useCallback, useEffect} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {shallowEqual, useDispatch, useSelector} from 'react-redux';
 import {useNavigate} from 'react-router';
 
+import * as SessionBuilderActions from '../../actions/SessionBuilder.js';
 import {BUTTON} from '../../constants/antd-types.js';
 import {LINKS} from '../../constants/common.js';
-import {ADD_CLOUD_PROVIDER_TAB_KEY, SERVER_TYPES, SESSION_BUILDER_TABS} from '../../constants/session-builder.js';
+import {
+  ADD_CLOUD_PROVIDER_TAB_KEY,
+  SERVER_TYPES,
+  SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT,
+  SESSION_BUILDER_TABS,
+} from '../../constants/session-builder.js';
 import {openLink} from '../../polyfills.js';
 import {isEmpty} from '../../utils/common.js';
 import {log} from '../../utils/logger.js';
@@ -31,7 +39,12 @@ import styles from './SessionBuilder.module.css';
 const isCapabilitySetEmpty = (caps) =>
   isEmpty(caps) || (caps.length === 1 && !('name' in caps[0]) && !('value' in caps[0]));
 
-const Session = (props) => {
+const Session = () => {
+  const builder = useSelector((state) => state.builder, shallowEqual);
+  const dispatch = useDispatch();
+  const actions = useMemo(() => bindActionCreators(SessionBuilderActions, dispatch), [dispatch]);
+  const props = {...builder, ...actions};
+
   const {
     tabKey,
     switchTabs,
@@ -61,6 +74,10 @@ const Session = (props) => {
 
   const navigate = useNavigate();
   const {t} = useTranslation();
+
+  const [isNarrow, setIsNarrow] = useState(
+    window.innerWidth > 0 && window.innerWidth < SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT,
+  );
 
   const isAttaching = tabKey === 'attach';
 
@@ -115,50 +132,59 @@ const Session = (props) => {
     switchTabs,
   ]);
 
+  useEffect(() => {
+    const updateIsNarrow = () => setIsNarrow(window.innerWidth < SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT);
+    window.addEventListener('resize', updateIsNarrow);
+    return () => window.removeEventListener('resize', updateIsNarrow);
+  }, []);
+
   return [
     <Spin size="large" spinning={!!newSessionLoading} key="main">
       <div className={styles.sessionContainer}>
-        <div className={styles.sessionHeader}>
-          <Tabs
-            activeKey={serverType}
-            onChange={(tab) => handleSelectServerTab(tab)}
-            className={styles.serverTabs}
-            items={[
-              {
-                label: t('Appium Server'),
-                key: SERVER_TYPES.REMOTE,
-                children: <ServerTabCustom {...props} />,
-              },
-              ...visibleProviders.map((providerName) => {
-                const provider = CloudProviders[providerName];
-                if (!provider) {
-                  return true;
-                }
-                return {
-                  label: <div>{provider.tabhead()}</div>,
-                  key: providerName,
-                  children: provider.tab(props),
-                };
-              }),
-              {
-                label: <span className="addCloudProviderTab">{t('Select Cloud Providers')}</span>,
-                key: ADD_CLOUD_PROVIDER_TAB_KEY,
-              },
-            ]}
-          />
-          <AppSettings />
-        </div>
+        <Tabs
+          activeKey={serverType}
+          onChange={(tab) => handleSelectServerTab(tab)}
+          styles={{root: {paddingBottom: '8px'}, header: {margin: '0px 0px 1em 6px'}, item: {padding: '10px 0px'}}}
+          items={[
+            {
+              label: t('Appium Server'),
+              key: SERVER_TYPES.REMOTE,
+              children: <ServerTabCustom {...props} />,
+            },
+            ...visibleProviders.map((providerName) => {
+              const provider = CloudProviders[providerName];
+              if (!provider) {
+                return true;
+              }
+              return {
+                label: <div>{provider.tabhead()}</div>,
+                key: providerName,
+                children: provider.tab(props),
+              };
+            }),
+            {
+              label: <span className="addCloudProviderTab">{t('Select Cloud Providers')}</span>,
+              key: ADD_CLOUD_PROVIDER_TAB_KEY,
+            },
+          ]}
+          tabBarExtraContent={<AppSettings />}
+        />
         <AdvancedServerParams {...props} />
         <Tabs
           activeKey={tabKey}
           onChange={switchTabs}
-          className={styles.scrollingTabCont}
+          styles={{
+            root: {marginTop: '8px', marginBottom: '1em'},
+            header: {margin: '0px 0px 1em 6px'},
+            item: {padding: '10px 0px'},
+          }}
+          className={styles.builderTabsCont}
           items={[
             {
               label: t('Capability Builder'),
               key: SESSION_BUILDER_TABS.CAPS_BUILDER,
               className: styles.scrollingTab,
-              children: <CapabilityEditor {...props} />,
+              children: <CapabilityEditor {...props} isNarrow={isNarrow} />,
             },
             {
               label: (
@@ -168,7 +194,7 @@ const Session = (props) => {
               ),
               key: SESSION_BUILDER_TABS.SAVED_CAPS,
               className: styles.scrollingTab,
-              children: <SavedCapabilitySets {...props} />,
+              children: <SavedCapabilitySets {...props} isNarrow={isNarrow} />,
             },
             {
               label: t('attachToSession'),

@@ -4,6 +4,7 @@ import {Refractor} from 'react-refractor';
 import {CLIENT_FRAMEWORK_MAP} from '../../../lib/client-frameworks/map.js';
 import RecorderTabCard from './RecorderTabCard.jsx';
 
+import inspectorStyles from '../SessionInspector.module.css';
 import styles from './Recorder.module.css';
 
 /**
@@ -44,21 +45,29 @@ const Recorder = (props) => {
   };
 
   return (
-    <RecorderTabCard
-      clientFramework={clientFramework}
-      clientCode={clientCode}
-      recordedActions={recordedActions}
-      setClientFramework={setClientFramework}
-      showBoilerplate={showBoilerplate}
-      toggleShowBoilerplate={toggleShowBoilerplate}
-      clearRecording={clearRecording}
-      saveAs={saveAs}
-    >
-      {!recordedActions.length && (
-        <div className={styles.noRecordedActions}>{t('enableRecordingAndPerformActions')}</div>
-      )}
-      {!!recordedActions.length && <Refractor language={ClientFrameworkClass.refractorLang} value={clientCode} />}
-    </RecorderTabCard>
+    <div style={{height: '100%', overflowX: 'scroll'}}>
+      <RecorderTabCard
+        clientFramework={clientFramework}
+        clientCode={clientCode}
+        recordedActions={recordedActions}
+        setClientFramework={setClientFramework}
+        showBoilerplate={showBoilerplate}
+        toggleShowBoilerplate={toggleShowBoilerplate}
+        clearRecording={clearRecording}
+        saveAs={saveAs}
+      >
+        {!recordedActions.length && (
+          <div className={styles.noRecordedActions}>{t('enableRecordingAndPerformActions')}</div>
+        )}
+        {!!recordedActions.length && (
+          <Refractor
+            className={`refractor ${inspectorStyles.clientCode}`}
+            language={ClientFrameworkClass.refractorLang}
+            value={clientCode}
+          />
+        )}
+      </RecorderTabCard>
+    </div>
   );
 };
 
