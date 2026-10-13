@@ -144,8 +144,10 @@ Same server underneath, three separate relationships — kept legible in the UI:
 
 Manages a single server with a status lifecycle: `stopped → starting → running →
 stopping → error`. On start it spawns the server through the process runner,
-then polls `<baseUrl>/status` until it returns HTTP 200 (30s timeout) before
-flipping to `running`. Defaults: host `127.0.0.1`, port `4723`, base path `/`,
+then polls `<baseUrl>/status` until it returns HTTP 200 before flipping to
+`running`. There is no limit on total start time, because a cold start (empty
+file cache, antivirus scanning every module) can take well over 30 s; the start
+fails only if the server prints nothing for 90 s without becoming ready. Defaults: host `127.0.0.1`, port `4723`, base path `/`,
 `--allow-cors` enabled (required by the Raw Command panel and browser-context
 calls).
 

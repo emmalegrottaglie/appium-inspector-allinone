@@ -88,6 +88,13 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
 
 ### Fixed
 
+- **The bundled server failed on a cold start.** Readiness had a fixed 30 s
+  limit, but the first start after a reboot (empty file cache, antivirus
+  scanning every module) took 37 s with three drivers installed, against 2 s
+  warm. The app killed a server that was still loading, and it ended up
+  "stopped" with no clear error. The limit now applies only to silence: a
+  start fails if the server prints nothing for 90 s without becoming ready, and
+  then the status shows that reason as an error.
 - **Source tab panels stopped filling the tab and could not be widened.** After
   switching to another inspector tab and back (or resizing while it was hidden),
   the App Source / Selected Element splitter kept panel sizes computed from the
