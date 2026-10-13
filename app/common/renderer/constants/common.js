@@ -1,7 +1,10 @@
 export const WINDOW_DIMENSIONS = {
-  MIN_WIDTH: 870,
-  MIN_HEIGHT: 610,
-  MAX_IMAGE_WIDTH_FRACTION: 0.4,
+  MIN_IMG_WIDTH_PX: 150,
+  // slightly less than the max panel fraction, to avoid the initial image width marginally exceeding it -
+  // only applies to devices wide enough to automatically hit this limit
+  MAX_IMG_WIDTH_FRACTION: 0.48,
+  MAX_SCREENSHOT_PANEL_WIDTH_FRACTION: 0.5,
+  INITIAL_SCREENSHOT_PANEL_WIDTH_PX: 300,
 };
 
 export const LINKS = {
@@ -15,9 +18,11 @@ export const LINKS = {
   UIAUTOMATOR_DOCS: 'https://github.com/appium/appium-uiautomator2-driver/blob/master/docs/uiautomator-uiselector.md',
 };
 
+// Known values of 'automationName'
 export const DRIVERS = {
   UIAUTOMATOR2: 'uiautomator2',
   ESPRESSO: 'espresso',
+  COMPOSE: 'compose', // subdriver of the Espresso driver
   XCUITEST: 'xcuitest',
   FLUTTER: 'flutter',
   MAC2: 'mac2',
@@ -26,3 +31,17 @@ export const DRIVERS = {
   SAFARI: 'safari',
   GECKO: 'gecko',
 };
+
+// Known values of 'platformName'
+export const PLATFORMS = {
+  ANDROID: 'android',
+  IOS: 'ios',
+  TVOS: 'tvos',
+  WATCHOS: 'watchos',
+  MACOS: 'mac',
+  WINDOWS: 'windows',
+  LINUX: 'linux',
+};
+
+// Certain platforms do not support W3C Actions - disable tap/swipe features on those
+export const PLATFORMS_WITHOUT_W3C_ACTIONS = [PLATFORMS.TVOS, PLATFORMS.WATCHOS];

@@ -1,11 +1,9 @@
-import {IconChevronDown, IconChevronUp, IconDownload, IconFiles, IconTag} from '@tabler/icons-react';
+import {IconDownload, IconFiles, IconTag} from '@tabler/icons-react';
 import {Button, Card, Flex, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {downloadFile} from '../../../../utils/file-handling.js';
 import {copyToClipboard} from '../../../../utils/other.js';
-
-import styles from './SelectedElement.module.css';
 
 /**
  * Title of the selected element's wrapper card, with its dedicated icon.
@@ -21,21 +19,17 @@ const SelectedElementPanelTitle = () => {
 };
 
 /**
- * Buttons shown in the selected element's wrapper card, plus (when panels
- * are stacked) the toggle that collapses/expands the card body while keeping
- * its header visible - the side-by-side layout already offers a full
- * collapse via the Splitter divider.
+ * Buttons shown in the selected element's wrapper card.
  */
 const SelectedElementHeaderButtons = ({
   elementAttributesData,
   elementActionsDisabled,
   selectedElementId,
   applyClientMethod,
-  collapsible,
-  collapsed,
-  onToggleCollapse,
 }) => {
   const {t} = useTranslation();
+  const copyAttrsLabel = t('Copy Attributes to Clipboard');
+  const downloadLabel = t('Download Screenshot');
 
   const downloadElementScreenshot = async (elementId) => {
     const elemScreenshot = await applyClientMethod({
@@ -50,8 +44,9 @@ const SelectedElementHeaderButtons = ({
 
   return (
     <span>
-      <Tooltip title={t('Copy Attributes to Clipboard')}>
+      <Tooltip title={copyAttrsLabel}>
         <Button
+          aria-label={copyAttrsLabel}
           type="text"
           disabled={elementActionsDisabled}
           id="btnCopyAttributes"
@@ -59,8 +54,9 @@ const SelectedElementHeaderButtons = ({
           onClick={() => copyToClipboard(JSON.stringify(elementAttributesData))}
         />
       </Tooltip>
-      <Tooltip title={t('Download Screenshot')}>
+      <Tooltip title={downloadLabel}>
         <Button
+          aria-label={downloadLabel}
           type="text"
           disabled={elementActionsDisabled}
           icon={<IconDownload size={18} />}
@@ -68,15 +64,6 @@ const SelectedElementHeaderButtons = ({
           onClick={() => downloadElementScreenshot(selectedElementId)}
         />
       </Tooltip>
-      {collapsible && (
-        <Tooltip title={t(collapsed ? 'Expand Panel' : 'Collapse Panel')}>
-          <Button
-            type="text"
-            icon={collapsed ? <IconChevronDown size={18} /> : <IconChevronUp size={18} />}
-            onClick={onToggleCollapse}
-          />
-        </Tooltip>
-      )}
     </span>
   );
 };
@@ -89,27 +76,24 @@ const SelectedElementCard = ({
   selectedElementId,
   elementActionsDisabled,
   elementAttributesData,
-  collapsible,
-  collapsed,
-  onToggleCollapse,
   children,
 }) => (
   <Card
     title={<SelectedElementPanelTitle />}
-    className={styles.selectedElementCard}
+    styles={{
+      header: {marginBottom: '0px', padding: '0px 8px 0px 16px', minHeight: '48px'},
+      body: {padding: '12px', height: 'calc(100% - 48px)', overflow: 'scroll'},
+    }}
     extra={
       <SelectedElementHeaderButtons
         elementAttributesData={elementAttributesData}
         elementActionsDisabled={elementActionsDisabled}
         selectedElementId={selectedElementId}
         applyClientMethod={applyClientMethod}
-        collapsible={collapsible}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
       />
     }
   >
-    {!collapsed && children}
+    {children}
   </Card>
 );
 

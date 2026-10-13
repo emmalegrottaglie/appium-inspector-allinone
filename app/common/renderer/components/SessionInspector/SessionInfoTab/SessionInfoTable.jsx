@@ -20,11 +20,11 @@ const formatSessionLength = (sessionLength) => {
   return formatMono(`${padTime(hours)}:${padTime(minutes)}:${padTime(seconds)}`);
 };
 
-const tableColumns = [
+const tableColumns = (firstColWidth) => [
   {
     dataIndex: 'property',
     key: 'property',
-    width: 200,
+    width: firstColWidth,
   },
   {
     dataIndex: 'value',
@@ -44,10 +44,10 @@ const innerDataSource = (tableData) =>
 /**
  * Inner table component for session information cells with multiple values.
  */
-const SessionInfoInnerTable = ({tableData}) => (
+const SessionInfoInnerTable = ({tableData, firstColWidth}) => (
   <Table
     className={styles.sessionInnerTable}
-    columns={tableColumns}
+    columns={tableColumns(firstColWidth)}
     dataSource={innerDataSource(tableData)}
     pagination={false}
     showHeader={false}
@@ -62,6 +62,7 @@ const SessionInfoInnerTable = ({tableData}) => (
 const SessionInfoTable = (props) => {
   const {
     driver,
+    featureCaps,
     getActiveAppId,
     getServerStatus,
     getFlatSessionCaps,
@@ -98,12 +99,12 @@ const SessionInfoTable = (props) => {
       {
         key: 'server_details',
         property: t('Server Details'),
-        value: <SessionInfoInnerTable tableData={status} />,
+        value: <SessionInfoInnerTable tableData={status} firstColWidth="25%" />,
       },
       {
         key: 'session_details',
         property: t('Session Details'),
-        value: <SessionInfoInnerTable tableData={flatSessionCaps} />,
+        value: <SessionInfoInnerTable tableData={flatSessionCaps} firstColWidth="40%" />,
       },
       {
         key: 'active_appId',
@@ -114,11 +115,10 @@ const SessionInfoTable = (props) => {
   };
 
   useEffect(() => {
-    if (!driver) {
+    if (!sessionStartTime) {
       return;
     }
-    const {isIOS, isAndroid} = driver;
-    getActiveAppId(isIOS, isAndroid);
+    getActiveAppId(featureCaps.automationName);
     getServerStatus();
     getFlatSessionCaps();
 
@@ -126,11 +126,11 @@ const SessionInfoTable = (props) => {
       setSessionLength(Date.now() - sessionStartTime);
     }, 1000);
     return () => clearInterval(intervalRef.current);
-  }, [driver, getActiveAppId, getServerStatus, getFlatSessionCaps, sessionStartTime]);
+  }, [featureCaps, getActiveAppId, getServerStatus, getFlatSessionCaps, sessionStartTime]);
 
   return (
     <Table
-      columns={tableColumns}
+      columns={tableColumns('25%')}
       dataSource={outerDataSource()}
       pagination={false}
       showHeader={false}

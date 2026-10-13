@@ -36,24 +36,30 @@ const RecorderTabHeaderButtons = ({
   saveAs,
 }) => {
   const {t} = useTranslation();
+  const toggleBoilerplateLabel = t('Show/Hide Boilerplate Code');
+  const copyLabel = t('Copy code to clipboard');
+  const clearLabel = t('Clear Actions');
+  const saveAsLabel = t('Save test as a file');
 
   return (
-    <Space size="middle">
+    <Space size="small">
       {!!recordedActions.length && (
         <Space.Compact>
-          <Tooltip title={t('Show/Hide Boilerplate Code')}>
+          <Tooltip title={toggleBoilerplateLabel}>
             <Button
+              aria-label={toggleBoilerplateLabel}
               onClick={toggleShowBoilerplate}
               icon={<IconEyeCode size={18} />}
               type={showBoilerplate ? BUTTON.PRIMARY : BUTTON.DEFAULT}
             />
           </Tooltip>
-          <Tooltip title={t('Copy code to clipboard')}>
-            <Button icon={<IconFiles size={18} />} onClick={() => copyToClipboard(clientCode)} />
+          <Tooltip title={copyLabel}>
+            <Button aria-label={copyLabel} icon={<IconFiles size={18} />} onClick={() => copyToClipboard(clientCode)} />
           </Tooltip>
           {window.electronIPC?.codeExport && saveAs && (
-            <Tooltip title={t('Save test as a file')}>
+            <Tooltip title={saveAsLabel}>
               <Dropdown.Button
+                aria-label={saveAsLabel}
                 icon={<IconChevronDown size={16} />}
                 onClick={() => saveAs(clientFramework)}
                 menu={{
@@ -68,8 +74,8 @@ const RecorderTabHeaderButtons = ({
               </Dropdown.Button>
             </Tooltip>
           )}
-          <Tooltip title={t('Clear Actions')}>
-            <Button icon={<IconEraser size={18} />} onClick={clearRecording} />
+          <Tooltip title={clearLabel}>
+            <Button aria-label={clearLabel} icon={<IconEraser size={18} />} onClick={clearRecording} />
           </Tooltip>
         </Space.Compact>
       )}
@@ -103,7 +109,11 @@ const RecorderTabCard = ({
 }) => (
   <Card
     title={<RecorderTabTitle />}
-    className={inspectorStyles.interactionTabCard}
+    styles={{
+      root: {minWidth: '500px'},
+      header: {padding: '0px 8px 0px 16px', minHeight: '48px'},
+      body: {padding: '12px', height: 'calc(100% - 48px)', overflowY: 'scroll'},
+    }}
     extra={
       <RecorderTabHeaderButtons
         clientFramework={clientFramework}

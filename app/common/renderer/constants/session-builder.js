@@ -8,6 +8,10 @@ export const SESSION_BUILDER_TABS = {
   PYTHON_TESTS: 'pythonTests',
 };
 
+// Below this window width, the JSON preview panel no longer has enough room
+// to sit beside the capability editor/saved sets panel, so it wraps below it instead.
+export const SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT = 800;
+
 export const SESSION_FILE_EXTENSION = '.appiumsession';
 
 export const SESSION_FILE_VERSIONS = {
@@ -45,7 +49,7 @@ export const SERVER_TYPES = {
 };
 
 export const SAVED_SESSIONS_TABLE_VALUES = {
-  DATE_COLUMN_WIDTH: '25%',
+  DATE_COLUMN_WIDTH: '105px',
   ACTIONS_COLUMN_WIDTH: '124px',
 };
 

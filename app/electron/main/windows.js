@@ -90,9 +90,8 @@ function buildSessionWindow(backgroundColor) {
     show: false,
     width: 1100,
     height: 710,
-    minWidth: 890,
-    minHeight: 710,
-    titleBarStyle: 'hiddenInset',
+    minWidth: 500,
+    minHeight: 600,
     backgroundColor,
     webPreferences: {
       preload: join(__dirname, '..', 'preload', 'preload.mjs'), // from 'main' in package.json

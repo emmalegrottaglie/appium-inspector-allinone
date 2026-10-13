@@ -1,6 +1,8 @@
 import sanitize from 'sanitize-filename';
 
 import {SAVED_CLIENT_FRAMEWORK, SET_SAVED_GESTURES} from '../../shared/setting-defs.js';
+import {COMMAND_EXECUTE_SCRIPT, COMMAND_UPDATE_SETTINGS} from '../constants/commands.js';
+import {DRIVERS} from '../constants/common.js';
 import {APP_MODE, NATIVE_APP, UNKNOWN_ERROR} from '../constants/session-inspector.js';
 import i18n from '../i18next.js';
 import InspectorDriver from '../lib/appium/inspector-driver.js';
@@ -47,9 +49,6 @@ export const SET_SHOW_BOILERPLATE = 'SET_SHOW_BOILERPLATE';
 
 export const SHOW_LOCATOR_SEARCH_MODAL = 'SHOW_LOCATOR_SEARCH_MODAL';
 export const HIDE_LOCATOR_SEARCH_MODAL = 'HIDE_LOCATOR_SEARCH_MODAL';
-export const SHOW_SIRI_COMMAND_MODAL = 'SHOW_SIRI_COMMAND_MODAL';
-export const HIDE_SIRI_COMMAND_MODAL = 'HIDE_SIRI_COMMAND_MODAL';
-export const SET_SIRI_COMMAND_VALUE = 'SET_SIRI_COMMAND_VALUE';
 export const SET_LOCATOR_SEARCH_STRATEGY = 'SET_LOCATOR_SEARCH_STRATEGY';
 export const SET_LOCATOR_SEARCH_VALUE = 'SET_LOCATOR_SEARCH_VALUE';
 export const SEARCHING_FOR_ELEMENTS = 'SEARCHING_FOR_ELEMENTS';
@@ -67,8 +66,6 @@ export const SET_SCREENSHOT_INTERACTION_MODE = 'SET_SCREENSHOT_INTERACTION_MODE'
 export const SET_APP_MODE = 'SET_APP_MODE';
 export const SET_SEARCHED_FOR_ELEMENT_BOUNDS = 'SET_SEARCHED_FOR_ELEMENT_BOUNDS';
 export const CLEAR_SEARCHED_FOR_ELEMENT_BOUNDS = 'CLEAR_SEARCHED_FOR_ELEMENT_BOUNDS';
-export const SET_FOUND_DISPLAYS = 'SET_FOUND_DISPLAYS';
-export const SET_CURRENT_DISPLAY_ID = 'SET_CURRENT_DISPLAY_ID';
 
 export const SET_COORD_START = 'SET_COORD_START';
 export const SET_COORD_END = 'SET_COORD_END';
@@ -120,7 +117,7 @@ const NO_NEW_COMMAND_LIMIT = 24 * 60 * 60 * 1000; // Set timeout to 24 hours
 // Shared by selectElement and tapElement.
 // Returns the computed strategy map.
 function prepareElementSelection(path, dispatch, getState) {
-  const {sourceJSON, sourceXML, expandedPaths, currentContext, automationName} = getState().inspector;
+  const {sourceJSON, sourceXML, expandedPaths, currentContext, featureCaps} = getState().inspector;
   const isNative = currentContext === NATIVE_APP;
   // Set the selected element in the source tree
   const selectedElement = findJSONElementByPath(path, sourceJSON);
@@ -140,7 +137,7 @@ function prepareElementSelection(path, dispatch, getState) {
   dispatch({type: SET_EXPANDED_PATHS, paths: copiedExpandedPaths});
 
   // Calculate the recommended locator strategies
-  const strategyMap = getSuggestedLocators(selectedElement, sourceXML, isNative, automationName);
+  const strategyMap = getSuggestedLocators(selectedElement, sourceXML, isNative, featureCaps.automationName);
   dispatch({type: SET_OPTIMAL_LOCATORS, strategyMap});
 
   return strategyMap;
@@ -263,6 +260,11 @@ export function applyClientMethod(params) {
       let args = [variableName, variableIndex];
       args = args.concat(params.args || []);
       dispatch({type: RECORD_ACTION, action: params.methodName, params: args});
+    }
+    // If updating settings, store the updated values
+    if (params.methodName === COMMAND_UPDATE_SETTINGS) {
+      const storeSettingsAction = storeSessionSettings(params.args[0]);
+      await storeSettingsAction(dispatch, getState);
     }
     dispatch({type: METHOD_CALL_DONE});
 
@@ -400,11 +402,22 @@ export function toggleShowBoilerplate() {
 
 export function setSessionDetails({serverDetails, driver, sessionCaps, appMode, isUsingMjpegMode}) {
   return (dispatch) => {
+    // Extract several capabilities from the finalised set of caps
+    // that may be relevant for enabling specific Inspector features
+    const featureCaps = {};
+    for (const stringCapName of ['automationName', 'browserName', 'platformName']) {
+      featureCaps[stringCapName] = driver.capabilities[stringCapName]?.toLowerCase();
+    }
+    // Convert platformVersion to a float - even if it is in a semver-style format, where conversion
+    // will only retain the first major & minor versions, this is sufficient for feature-gating
+    featureCaps.platformVersion = parseFloat(driver.capabilities.platformVersion, 10) || undefined;
+
     dispatch({
       type: SET_SESSION_DETAILS,
       serverDetails,
       driver,
       sessionCaps,
+      featureCaps,
       appMode,
       isUsingMjpegMode,
     });
@@ -434,56 +447,6 @@ export function showLocatorSearchModal() {
 export function hideLocatorSearchModal() {
   return (dispatch) => {
     dispatch({type: HIDE_LOCATOR_SEARCH_MODAL});
-  };
-}
-
-export function showSiriCommandModal() {
-  return (dispatch) => {
-    dispatch({type: SHOW_SIRI_COMMAND_MODAL});
-  };
-}
-
-export function hideSiriCommandModal() {
-  return (dispatch) => {
-    dispatch({type: HIDE_SIRI_COMMAND_MODAL});
-  };
-}
-
-export function setSiriCommandValue(siriCommandValue) {
-  return (dispatch) => {
-    dispatch({type: SET_SIRI_COMMAND_VALUE, siriCommandValue});
-  };
-}
-
-export function toggleMultiDisplayMode(displays) {
-  return async (dispatch, getState) => {
-    if (displays) {
-      // Toggling off: reset to the default display (0), then set displays to null
-      await setCurrentDisplayId(0)(dispatch, getState);
-      return dispatch({type: SET_FOUND_DISPLAYS, displays: null});
-    }
-    // Toggling on: run search, set displays and currentDisplayId
-    // Any errors will be surfaced as part of callClientMethod
-    const action = applyClientMethod({
-      methodName: 'executeScript',
-      args: ['mobile:listDisplays', []],
-      skipRefresh: true,
-    });
-    const foundDisplays = await action(dispatch, getState);
-    dispatch({type: SET_FOUND_DISPLAYS, displays: foundDisplays});
-    dispatch({type: SET_CURRENT_DISPLAY_ID, displayId: 0});
-  };
-}
-
-export function setCurrentDisplayId(displayId) {
-  return async (dispatch, getState) => {
-    const action = applyClientMethod({
-      methodName: 'updateSettings',
-      // without enableMultiWindows: true, app source is retrieved from default display
-      args: [{currentDisplayId: displayId, enableMultiWindows: true}],
-    });
-    await action(dispatch, getState);
-    dispatch({type: SET_CURRENT_DISPLAY_ID, displayId});
   };
 }
 
@@ -820,21 +783,21 @@ export function toggleShowCentroids() {
   };
 }
 
-export function getActiveAppId(isIOS, isAndroid) {
+export function getActiveAppId(automationName) {
   return async (dispatch, getState) => {
     try {
-      if (isIOS) {
+      if (automationName === DRIVERS.XCUITEST) {
         const action = applyClientMethod({
-          methodName: 'executeScript',
+          methodName: COMMAND_EXECUTE_SCRIPT,
           args: ['mobile:activeAppInfo', []],
           skipRefresh: true,
         });
         const {bundleId} = await action(dispatch, getState);
         dispatch({type: SET_APP_ID, appId: bundleId});
       }
-      if (isAndroid) {
+      if ([DRIVERS.UIAUTOMATOR2, DRIVERS.ESPRESSO].includes(automationName)) {
         const action = applyClientMethod({
-          methodName: 'executeScript',
+          methodName: COMMAND_EXECUTE_SCRIPT,
           args: ['mobile:getCurrentPackage', []],
           skipRefresh: true,
         });

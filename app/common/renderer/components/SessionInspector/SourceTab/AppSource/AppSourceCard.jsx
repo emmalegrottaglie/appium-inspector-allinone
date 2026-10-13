@@ -1,4 +1,4 @@
-import {IconChevronDown, IconChevronUp, IconDownload, IconFiles, IconFileText} from '@tabler/icons-react';
+import {IconDownload, IconFiles, IconFileText} from '@tabler/icons-react';
 import {Button, Card, Flex, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
@@ -26,41 +26,33 @@ const AppSourcePanelTitle = () => {
 };
 
 /**
- * Header action buttons for source XML copy and download, plus (when panels
- * are stacked) the toggle that collapses/expands the card body while keeping
- * its header visible - the side-by-side layout already offers a full
- * collapse via the Splitter divider.
+ * Header action buttons for source XML copy and download.
  */
-const AppSourceHeaderButtons = ({sourceXML, collapsible, collapsed, onToggleCollapse}) => {
+const AppSourceHeaderButtons = ({sourceXML}) => {
   const {t} = useTranslation();
+  const copyXmlLabel = t('Copy XML Source to Clipboard');
+  const downloadLabel = t('Download Source as .XML File');
 
   return (
     <span>
-      <Tooltip title={t('Copy XML Source to Clipboard')}>
+      <Tooltip title={copyXmlLabel}>
         <Button
+          aria-label={copyXmlLabel}
           type="text"
           id="btnSourceXML"
           icon={<IconFiles size={18} />}
           onClick={() => copyToClipboard(sourceXML)}
         />
       </Tooltip>
-      <Tooltip title={t('Download Source as .XML File')}>
+      <Tooltip title={downloadLabel}>
         <Button
+          aria-label={downloadLabel}
           type="text"
           id="btnDownloadSourceXML"
           icon={<IconDownload size={18} />}
           onClick={() => downloadXML(sourceXML)}
         />
       </Tooltip>
-      {collapsible && (
-        <Tooltip title={t(collapsed ? 'Expand Panel' : 'Collapse Panel')}>
-          <Button
-            type="text"
-            icon={collapsed ? <IconChevronDown size={18} /> : <IconChevronUp size={18} />}
-            onClick={onToggleCollapse}
-          />
-        </Tooltip>
-      )}
     </span>
   );
 };
@@ -68,19 +60,16 @@ const AppSourceHeaderButtons = ({sourceXML, collapsible, collapsed, onToggleColl
 /**
  * Wrapper card for the app source tree.
  */
-const AppSourceCard = ({sourceXML, collapsible, collapsed, onToggleCollapse, children}) => (
+const AppSourceCard = ({sourceXML, children}) => (
   <Card
     title={<AppSourcePanelTitle />}
-    extra={
-      <AppSourceHeaderButtons
-        sourceXML={sourceXML}
-        collapsible={collapsible}
-        collapsed={collapsed}
-        onToggleCollapse={onToggleCollapse}
-      />
-    }
+    styles={{
+      header: {padding: '0px 8px 0px 16px', minHeight: '48px'},
+      body: {padding: '12px', height: 'calc(100% - 48px)'},
+    }}
+    extra={<AppSourceHeaderButtons sourceXML={sourceXML} />}
   >
-    {!collapsed && children}
+    {children}
   </Card>
 );
 

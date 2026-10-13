@@ -12,7 +12,7 @@ import styles from './Commands.module.css';
 /**
  * Tab switcher for the dynamic list of driver commands and execute methods.
  */
-const MethodMapCommandsTabs = ({driverCommands, driverExecuteMethods, startCommand}) => {
+const MethodMapCommandsTabs = ({getItemColspan, driverCommands, driverExecuteMethods, startCommand}) => {
   const {t} = useTranslation();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,6 +27,7 @@ const MethodMapCommandsTabs = ({driverCommands, driverExecuteMethods, startComma
     <Tabs
       defaultActiveKey={hasNoCommands ? '2' : '1'}
       size="small"
+      styles={{header: {marginBottom: '8px'}, item: {padding: '10px 0px'}}}
       centered
       items={[
         {
@@ -36,6 +37,7 @@ const MethodMapCommandsTabs = ({driverCommands, driverExecuteMethods, startComma
           className: styles.methodMapTab,
           children: (
             <MethodMapCommandsContent
+              getItemColspan={getItemColspan}
               driverMethods={filteredDriverCommands}
               isExecute={false}
               startCommand={startCommand}
@@ -49,6 +51,7 @@ const MethodMapCommandsTabs = ({driverCommands, driverExecuteMethods, startComma
           className: styles.methodMapTab,
           children: (
             <MethodMapCommandsContent
+              getItemColspan={getItemColspan}
               driverMethods={filteredDriverExecuteMethods}
               isExecute={true}
               startCommand={startCommand}

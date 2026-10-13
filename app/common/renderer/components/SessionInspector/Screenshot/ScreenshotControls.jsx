@@ -11,6 +11,7 @@ import {Button, Space, Tooltip} from 'antd';
 import {useTranslation} from 'react-i18next';
 
 import {BUTTON} from '../../../constants/antd-types.js';
+import {PLATFORMS_WITHOUT_W3C_ACTIONS} from '../../../constants/common.js';
 import {SCREENSHOT_INTERACTION_MODE} from '../../../constants/screenshot.js';
 import {downloadFile} from '../../../utils/file-handling.js';
 
@@ -30,6 +31,8 @@ const downloadScreenshot = (screenshot) => {
  */
 const ScreenshotCaptureModeControls = ({setMjpegState, isUsingMjpegMode, setRefreshingState, applyClientMethod}) => {
   const {t} = useTranslation();
+  const useMjpegLabel = t('useMjpegStream');
+  const useScreenshotLabel = t('useScreenshotApi');
 
   const switchScreenCaptureMode = (shouldUseMjpeg) => {
     setMjpegState(shouldUseMjpeg);
@@ -41,15 +44,17 @@ const ScreenshotCaptureModeControls = ({setMjpegState, isUsingMjpegMode, setRefr
 
   return (
     <Space.Compact>
-      <Tooltip title={t('useMjpegStream')} placement="topLeft">
+      <Tooltip title={useMjpegLabel} placement="topLeft">
         <Button
+          aria-label={useMjpegLabel}
           icon={<IconMovie size={18} />}
           onClick={() => switchScreenCaptureMode(true)}
           type={isUsingMjpegMode ? BUTTON.PRIMARY : BUTTON.DEFAULT}
         />
       </Tooltip>
-      <Tooltip title={t('useScreenshotApi')} placement="topLeft">
+      <Tooltip title={useScreenshotLabel} placement="topLeft">
         <Button
+          aria-label={useScreenshotLabel}
           icon={<IconPhoto size={18} />}
           onClick={() => switchScreenCaptureMode(false)}
           type={!isUsingMjpegMode ? BUTTON.PRIMARY : BUTTON.DEFAULT}
@@ -64,10 +69,12 @@ const ScreenshotCaptureModeControls = ({setMjpegState, isUsingMjpegMode, setRefr
  */
 const ToggleElementHandlesButton = ({showCentroids, toggleShowCentroids, isGestureEditorVisible}) => {
   const {t} = useTranslation();
+  const toggleHandlesLabel = showCentroids ? t('Hide Element Handles') : t('Show Element Handles');
 
   return (
-    <Tooltip title={t(showCentroids ? 'Hide Element Handles' : 'Show Element Handles')}>
+    <Tooltip title={toggleHandlesLabel}>
       <Button
+        aria-label={toggleHandlesLabel}
         icon={<IconEyePlus size={18} />}
         onClick={() => toggleShowCentroids()}
         type={showCentroids ? BUTTON.PRIMARY : BUTTON.DEFAULT}
@@ -86,8 +93,15 @@ const ScreenshotInteractionModeControls = ({
   selectScreenshotInteractionMode,
   clearCoordAction,
   isGestureEditorVisible,
+  platformName,
 }) => {
+  // Disable the tap/swipe interaction mode on unsupported platforms
+  const areW3CActionsUnsupported = PLATFORMS_WITHOUT_W3C_ACTIONS.includes(platformName);
+
   const {t} = useTranslation();
+  const selectElemLabel = t('Select Elements');
+  const tapElemLabel = t('Tap By Element');
+  const tapCoordsLabel = areW3CActionsUnsupported ? t('w3cActionsUnsupported') : t('Tap/Swipe By Coordinates');
 
   const screenshotInteractionChange = (mode) => {
     clearCoordAction(); // When the action changes, reset the swipe action
@@ -96,28 +110,31 @@ const ScreenshotInteractionModeControls = ({
 
   return (
     <Space.Compact>
-      <Tooltip title={t('Select Elements')}>
+      <Tooltip title={selectElemLabel}>
         <Button
+          aria-label={selectElemLabel}
           icon={<IconObjectScan size={18} />}
           onClick={() => screenshotInteractionChange(SELECT)}
           type={screenshotInteractionMode === SELECT ? BUTTON.PRIMARY : BUTTON.DEFAULT}
           disabled={isGestureEditorVisible}
         />
       </Tooltip>
-      <Tooltip title={t('Tap By Element')}>
+      <Tooltip title={tapElemLabel}>
         <Button
+          aria-label={tapElemLabel}
           icon={<IconSquarePlus size={18} />}
           onClick={() => screenshotInteractionChange(TAP_ELEMENT)}
           type={screenshotInteractionMode === TAP_ELEMENT ? BUTTON.PRIMARY : BUTTON.DEFAULT}
           disabled={isGestureEditorVisible}
         />
       </Tooltip>
-      <Tooltip title={t('Tap/Swipe By Coordinates')}>
+      <Tooltip title={tapCoordsLabel} placement={areW3CActionsUnsupported ? 'bottom' : 'top'}>
         <Button
+          aria-label={tapCoordsLabel}
           icon={<IconCrosshair size={18} />}
           onClick={() => screenshotInteractionChange(TAP_SWIPE)}
           type={screenshotInteractionMode === TAP_SWIPE ? BUTTON.PRIMARY : BUTTON.DEFAULT}
-          disabled={isGestureEditorVisible}
+          disabled={areW3CActionsUnsupported || isGestureEditorVisible}
         />
       </Tooltip>
     </Space.Compact>
@@ -129,10 +146,12 @@ const ScreenshotInteractionModeControls = ({
  */
 const DownloadScreenshotButton = ({screenshot, showScreenshot, isUsingMjpegMode}) => {
   const {t} = useTranslation();
+  const downloadLabel = t('Download Screenshot');
 
   return (
-    <Tooltip title={t('Download Screenshot')}>
+    <Tooltip title={downloadLabel}>
       <Button
+        aria-label={downloadLabel}
         icon={<IconDownload size={18} />}
         onClick={() => downloadScreenshot(screenshot)}
         disabled={!showScreenshot || isUsingMjpegMode}
@@ -159,12 +178,13 @@ const ScreenshotControls = (props) => {
     isGestureEditorVisible,
     clearCoordAction,
     applyClientMethod,
+    featureCaps,
   } = props;
 
   return (
     <div className={styles.screenshotControls}>
-      <Space size="small">
-        {serverDetails.mjpegScreenshotUrl !== null && (
+      <Space size="small" wrap className={styles.screenshotControlsSpace}>
+        {serverDetails.mjpegScreenshotUrl != null && (
           <ScreenshotCaptureModeControls
             setMjpegState={setMjpegState}
             isUsingMjpegMode={isUsingMjpegMode}
@@ -182,6 +202,7 @@ const ScreenshotControls = (props) => {
           selectScreenshotInteractionMode={selectScreenshotInteractionMode}
           clearCoordAction={clearCoordAction}
           isGestureEditorVisible={isGestureEditorVisible}
+          platformName={featureCaps.platformName}
         />
         <DownloadScreenshotButton
           screenshot={screenshot}

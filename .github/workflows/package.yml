@@ -1,14 +1,16 @@
-# Builds the desktop and plugin versions of the app.
-# The plugin version is published to npm, while the desktop app packages
-# are uploaded to a GitHub release for the latest app version tag.
+# Tags a new version (bump/commit/tag), then builds the desktop and plugin versions of the app.
+# The plugin version is published to npm, while the desktop app artifacts
+# are uploaded to a new GitHub draft release for the specified tag.
 
 name: Package and Publish
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
+    inputs:
+      new-version:
+        description: 'Version number to publish (for example 2026.1.1)'
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -17,12 +19,75 @@ permissions:
   id-token: write # to enable use of OIDC for trusted publishing and npm provenance
 
 jobs:
-  electron:
-    name: Upload Electron App
-    strategy:
-      matrix:
-        image: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.image }}
+  tag-version:
+    name: Tag New Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Validate Version Syntax
+        shell: bash
+        run: |
+          if [[ ! "${{ inputs.new-version }}" =~ ^[0-9]{4}\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'Expected a valid version number like 2026.1.1' >&2
+            exit 1
+          fi
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0 # fetch all tags
+      - name: Use GH Actions credentials
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: lts/*
+          cache: 'npm'
+      - name: Install dependencies (Node.js)
+        run: npm ci
+      - name: Tag new version
+        run: npm version ${{ inputs.new-version }}
+      - name: Record pushed tag
+        id: tag
+        run: echo "tag=$(git tag --points-at HEAD)" >> "$GITHUB_OUTPUT"
+
+  windows:
+    name: Build Windows App
+    needs: tag-version
+    runs-on: windows-latest
+
+    env:
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.tag-version.outputs.tag }}
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: lts/*
+          cache: 'npm'
+      - name: Install dependencies (Node.js)
+        run: npm ci
+      - name: Build Electron app
+        run: npm run build:electron
+      - name: Package app
+        run: npx electron-builder build --x64 --arm64 --publish always
+      - name: Upload built packages
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: artifact-windows-latest
+          path: release/
+
+  macos:
+    name: Build macOS App
+    needs: tag-version
+    runs-on: macos-latest
 
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: true
@@ -32,6 +97,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.tag-version.outputs.tag }}
       - name: Use Node.js LTS
         uses: actions/setup-node@v7.0.0
         with:
@@ -39,21 +106,53 @@ jobs:
           cache: 'npm'
       - name: Install dependencies (Node.js)
         run: npm ci
-      - name: Build electron app
+      - name: Build Electron app
         run: npm run build:electron
-      - name: build package
+      - name: Package app
         run: npx electron-builder build --x64 --arm64 --publish always
       - name: Upload built packages
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: artifact-${{ matrix.image }}
+          name: artifact-macos-latest
+          path: release/
+
+  linux:
+    name: Build Linux App
+    needs: tag-version
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.tag-version.outputs.tag }}
+      - name: Use Node.js LTS
+        uses: actions/setup-node@v7.0.0
+        with:
+          node-version: lts/*
+          cache: 'npm'
+      - name: Install dependencies (Node.js)
+        run: npm ci
+      - name: Build Electron app
+        run: npm run build:electron
+      - name: Package app
+        run: npx electron-builder build --x64 --arm64 --publish always
+      - name: Upload built packages
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: artifact-ubuntu-latest
           path: release/
 
   plugin:
     name: Publish Appium Plugin
+    needs: tag-version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.tag-version.outputs.tag }}
       - name: Use Node.js LTS
         uses: actions/setup-node@v7.0.0
         with:

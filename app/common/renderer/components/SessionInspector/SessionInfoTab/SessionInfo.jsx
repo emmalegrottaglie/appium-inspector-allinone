@@ -4,6 +4,8 @@ import SessionInfoCodeBox from './SessionInfoCodeBox.jsx';
 import SessionInfoTabCard from './SessionInfoTabCard.jsx';
 import SessionInfoTable from './SessionInfoTable.jsx';
 
+import inspectorStyles from '../SessionInspector.module.css';
+
 /**
  * Contents of the session information tab.
  */
@@ -12,7 +14,12 @@ const SessionInfo = (props) => {
 
   return (
     <SessionInfoTabCard>
-      <Space orientation="vertical" size="middle">
+      <Space
+        className={inspectorStyles.spaceContainer}
+        orientation="vertical"
+        size="middle"
+        style={{minWidth: '600px'}}
+      >
         <SessionInfoTable {...props} />
         <SessionInfoCodeBox
           clientFramework={clientFramework}
