@@ -936,17 +936,6 @@ export function setPortFromUrl() {
   };
 }
 
-// Where a session started now would run: the URL for a local/remote server, otherwise the
-// cloud provider, whose connection details a link cannot set
-function describeSessionTarget({serverType, server}) {
-  if (serverType !== SERVER_TYPES.LOCAL && serverType !== SERVER_TYPES.REMOTE) {
-    return serverType;
-  }
-  const {hostname, port, path, ssl} = server[serverType] || {};
-  const serverPath = path || DEFAULT_SERVER_PROPS.path;
-  return `${ssl ? 'https' : 'http'}://${hostname || DEFAULT_SERVER_PROPS.hostname}:${port || DEFAULT_SERVER_PROPS.port}${serverPath === '/' ? '' : serverPath}`;
-}
-
 export function initFromQueryString(loadNewSession) {
   return (dispatch, getState) => {
     if (!isFirstRun) {
@@ -959,6 +948,7 @@ export function initFromQueryString(loadNewSession) {
     const initialState = url.searchParams.get('state');
     const autoStartSession = url.searchParams.get('autoStart');
 
+    let isStateFromUrl = false;
     if (initialState) {
       let parsedState;
       try {
@@ -967,24 +957,20 @@ export function initFromQueryString(loadNewSession) {
         showError(new Error('Could not parse initial state from URL'), {secs: 0});
       }
       if (parsedState !== undefined) {
-        // Anyone can craft this link, so only the parts that cannot redirect saved
-        // credentials are applied
+        // Anyone can craft this link, so only the parts that cannot reach saved or environment
+        // credentials are applied, and they replace the saved server state (see the reducer)
         const {state, dropped} = sanitizeUrlState(parsedState);
         if (dropped.length) {
           log.warn(`Ignored state from URL that a link may not set: ${dropped.join(', ')}`);
         }
         dispatch({type: SET_STATE_FROM_URL, state});
+        isStateFromUrl = true;
       }
     }
 
-    if (autoStartSession === AUTO_START_URL_PARAM) {
-      // Anyone can craft the link, and a session starts with its capabilities on whichever
-      // server is selected (possibly a cloud account), so the user confirms first
-      if (
-        !window.confirm(i18n.t('startSessionFromLinkConfirmation', {target: describeSessionTarget(getState().builder)}))
-      ) {
-        return;
-      }
+    // Only a session the link itself describes is started automatically: without state from the
+    // URL, it would run on the saved server, which may be a cloud account with saved credentials
+    if (autoStartSession === AUTO_START_URL_PARAM && isStateFromUrl) {
       // at this point these can only be set using SET_STATE_FROM_URL
       const {attachSessId, caps} = getState().builder;
       if (attachSessId) {

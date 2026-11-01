@@ -8,16 +8,14 @@ export default class DotNetNUnitFramework extends CommonClientFramework {
   static refractorLib = refractorCsharp;
 
   getCSharpVal(jsonVal) {
-    if (jsonVal === null) {
-      return 'null';
-    } else if (Array.isArray(jsonVal)) {
+    if (Array.isArray(jsonVal)) {
       const convertedItems = jsonVal.map((item) => this.getCSharpVal(item));
-      return `{${convertedItems.join(', ')}}`;
-    } else if (typeof jsonVal === 'object') {
-      const convertedItems = Object.entries(jsonVal).map(([k, v]) => `{${this.quote(k)}, ${this.getCSharpVal(v)}}`);
+      return `new object[] {${convertedItems.join(', ')}}`;
+    } else if (jsonVal !== null && typeof jsonVal === 'object') {
+      const convertedItems = Object.entries(jsonVal).map(([k, v]) => `{${JSON.stringify(k)}, ${this.getCSharpVal(v)}}`);
       return `new Dictionary<string, dynamic> {${convertedItems.join(', ')}}`;
     }
-    return typeof jsonVal === 'string' ? this.quote(jsonVal) : JSON.stringify(jsonVal);
+    return JSON.stringify(jsonVal);
   }
 
   wrapWithBoilerplate(code) {
@@ -41,7 +39,7 @@ export default class DotNetNUnitFramework extends CommonClientFramework {
     })();
     let capStr = this.indent(
       Object.entries(this.caps)
-        .map(([k, v]) => `options.AddAdditionalAppiumOption(${this.quote(k)}, ${this.getCSharpVal(v)});`)
+        .map(([k, v]) => `options.AddAdditionalAppiumOption(${JSON.stringify(k)}, ${this.getCSharpVal(v)});`)
         .join('\n'),
       8,
     );
@@ -49,6 +47,7 @@ export default class DotNetNUnitFramework extends CommonClientFramework {
     return `// This sample code supports Appium .NET client >=5
 // https://github.com/appium/dotnet-client
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using NUnit.Framework;
 using OpenQA.Selenium;
@@ -109,9 +108,9 @@ ${this.indent(code, 8)}
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `var ${localVar} = _driver.FindElements(MobileBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
+      return `var ${localVar} = _driver.FindElements(MobileBy.${suffixMap[strategy]}(${JSON.stringify(locator)}));`;
     } else {
-      return `var ${localVar} = _driver.FindElement(MobileBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
+      return `var ${localVar} = _driver.FindElement(MobileBy.${suffixMap[strategy]}(${JSON.stringify(locator)}));`;
     }
   }
 
@@ -124,7 +123,7 @@ ${this.indent(code, 8)}
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.getVarName(varName, varIndex)}.SendKeys(${this.quote(text)});`;
+    return `${this.getVarName(varName, varIndex)}.SendKeys(${JSON.stringify(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -159,12 +158,16 @@ _driver.PerformActions(new List<ActionSequence> { swipe });
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `_driver.ExecuteScript(${this.quote(scriptCmd)});`;
+    return `_driver.ExecuteScript(${JSON.stringify(scriptCmd)});`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
     // C# Dictionary accepts a sequence of tuples
-    return `_driver.ExecuteScript(${this.quote(scriptCmd)}, ${this.getCSharpVal(jsonArg[0])});`;
+    const scriptArg = jsonArg[0];
+    const scriptArgVal = this.getCSharpVal(scriptArg);
+    const wrappedScriptArgVal =
+      scriptArg === null || Array.isArray(scriptArg) ? `(object) ${scriptArgVal}` : scriptArgVal;
+    return `_driver.ExecuteScript(${JSON.stringify(scriptCmd)}, ${wrappedScriptArgVal});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
@@ -175,7 +178,7 @@ _driver.PerformActions(new List<ActionSequence> { swipe });
       );
       return settings.join('\n');
     } catch {
-      return `// Could not parse: ${this.quote(JSON.stringify(settingsJson))}`;
+      return `// Could not parse: ${JSON.stringify(settingsJson)}`;
     }
   }
 

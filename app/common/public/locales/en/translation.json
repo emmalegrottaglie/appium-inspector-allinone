@@ -131,8 +131,6 @@
   "couldNotObtainSource": "Could not obtain source: {{errorMsg}}",
   "desiredCapabilitiesDocumentation": "Capabilities Documentation",
   "startSession": "Start Session",
-  "sauceConnectProxyConfirmation": "Send your Sauce Labs credentials unencrypted to the Sauce Connect proxy at {{host}}? Only continue if you run that proxy yourself.",
-  "startSessionFromLinkConfirmation": "This link starts a session on {{target}} with the capabilities it contains. Start it now?",
   "saveAs": "Save As…",
   "attachToSession": "Attach to Session",
   "selectedElement": "Selected Element",
@@ -328,6 +326,7 @@
   "enterSessionID": "Enter session ID for attaching manually",
   "refreshDiscoveredSessions": "Refresh Discovered Sessions",
   "toggleMultiDisplayMode": "Toggle Multi-Display Mode",
+  "defaultDisplay": "Default Display",
   "toggleActiveWindowSelection": "Toggle Selection of Active Window",
   "focusedWindow": "Focused Window",
   "topmostWindow": "Top-Most Window",
@@ -337,5 +336,8 @@
   "w3cActionsUnsupported": "W3C Actions are not supported on this platform",
   "Customize Visible Attributes": "Customize Visible Attributes",
   "importantAttributesDescription": "Choose which attributes appear in the compact source tree. Select an attribute or type a name to add it. Changes are saved between sessions.",
-  "Restore Default Attributes": "Restore Default Attributes"
+  "Restore Default Attributes": "Restore Default Attributes",
+  "searchHistory": "Search History:",
+  "toggleSearchHistory": "Toggle Search History",
+  "clearSearchHistory": "Clear Search History"
 }

@@ -143,6 +143,7 @@
   "US-West": "US West 1",
   "US-East": "US East 4",
   "EU-Central": "EU Central 1",
+  "Asia-South": "Asia South 2",
   "proxyThroughSC": "Прокси Sauce Connect через Selenium Relay",
   "text": "текст",
   "boolean": "логическое значение",
@@ -325,6 +326,7 @@
   "enterSessionID": "Введите ID сессии для прикрепления вручную",
   "refreshDiscoveredSessions": "Обновить обнаруженные сессии",
   "toggleMultiDisplayMode": "Переключить режим мультидисплея",
+  "defaultDisplay": "Основной дисплей",
   "toggleActiveWindowSelection": "Переключить выбор активного окна",
   "focusedWindow": "Окно в фокусе",
   "topmostWindow": "Самое верхнее окно",
@@ -334,5 +336,8 @@
   "w3cActionsUnsupported": "Действия W3C не поддерживаются на этой платформе",
   "Customize Visible Attributes": "Настройка видимых атрибутов",
   "importantAttributesDescription": "Настройте атрибуты, которые отображаются в компактном исходном дереве. Выберите атрибут или введите имя, чтобы добавить его. Изменения сохраняются между сессиями.",
-  "Restore Default Attributes": "Восстановить атрибуты по умолчанию"
+  "Restore Default Attributes": "Восстановить атрибуты по умолчанию",
+  "searchHistory": "Search History:",
+  "toggleSearchHistory": "Toggle Search History",
+  "clearSearchHistory": "Clear Search History"
 }

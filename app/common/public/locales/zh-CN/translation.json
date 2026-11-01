@@ -143,6 +143,7 @@
   "US-West": "美国西部1",
   "US-East": "美国西部4",
   "EU-Central": "欧洲中部1",
+  "Asia-South": "Asia South 2",
   "proxyThroughSC": "通过 Sauce Connect 的 Selenium Relay 代理",
   "text": "文本",
   "boolean": "布尔值",
@@ -325,6 +326,7 @@
   "enterSessionID": "请输入会话ID以手动连接",
   "refreshDiscoveredSessions": "刷新发现的会话",
   "toggleMultiDisplayMode": "切换多显示器模式",
+  "defaultDisplay": "Default Display",
   "toggleActiveWindowSelection": "Toggle Selection of Active Window",
   "focusedWindow": "Focused Window",
   "topmostWindow": "Top-Most Window",
@@ -334,5 +336,8 @@
   "w3cActionsUnsupported": "W3C Actions are not supported on this platform",
   "Customize Visible Attributes": "Customize Visible Attributes",
   "importantAttributesDescription": "Choose which attributes appear in the compact source tree. Select an attribute or type a name to add it. Changes are saved between sessions.",
-  "Restore Default Attributes": "Restore Default Attributes"
+  "Restore Default Attributes": "Restore Default Attributes",
+  "searchHistory": "Search History:",
+  "toggleSearchHistory": "Toggle Search History",
+  "clearSearchHistory": "Clear Search History"
 }

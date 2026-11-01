@@ -17,9 +17,8 @@ generally correspond to a hardware button on an Android, iOS, iPadOS, tvOS or wa
 
 - Android: back / home / app switcher
 - iOS/iPadOS/tvOS: buttons dropdown / Siri
-    - The buttons listed in the dropdown correspond to values supported by the XCUITest driver's
-      [`mobile: pressButton`](https://appium.github.io/appium-xcuitest-driver/latest/reference/execute-methods/#mobile-pressbutton)
-      execute method. The Inspector filters these only by the device category and OS version.
+    - The buttons listed in the dropdown correspond to values returned by the XCUITest driver's
+      [`mobile: getPressableButtons`](https://appium.github.io/appium-xcuitest-driver/latest/reference/execute-methods/#mobile-getpressablebuttons) execute method
     - The Siri button will open a prompt for input text, which will be used as the Siri command.
       Please note that the command will not work if Siri is disabled.
 - watchOS: buttons dropdown / Digital Crown rotation / gestures dropdown / Siri
@@ -38,7 +37,7 @@ for that driver.
 !!! note
 
     This functionality is only supported for the UiAutomator2 driver `6.6.0`+, on devices
-    running Android 11 or newer.
+    running Android 11 or newer, as well as the XCUITest driver on iOS devices.
 
 ![Multi-Display Button](./assets/images/header/multi-display-button.png)
 
@@ -50,8 +49,8 @@ created, listing all discovered displays.
 
 Selecting a different display in the dropdown will automatically switch the screenshot and app
 source to those of the new display. Most screenshot and element interactions will work as normal,
-though some functionality will still only target the default display (such as device system buttons
-and MJPEG screenshot stream).
+though depending on the driver, some functionality may still only target the default display (such
+as device system buttons and MJPEG screenshot stream).
 
 Pressing the multi-display button while multi-display mode is active will switch to the default
 display and hide the dropdown.
@@ -77,7 +76,7 @@ Pressing the button will reveal a new dropdown with 3 options.
 - All Windows: this strategy includes all accessible windows in the page source. It corresponds to the
   `enableMultiWindows` driver setting being set to `true`.
 
-Refer to the [UiAutomator2 Multi-Window Testing guide](https://github.com/appium/appium-uiautomator2-driver/blob/master/docs/android-multiwindow.md)
+Refer to the [UiAutomator2 Multi-Window Testing guide](https://appium.github.io/appium-uiautomator2-driver/latest/guides/multiwindow/)
 for more information.
 
 Pressing the window switcher button while the dropdown is visible will revert to the default
@@ -158,11 +157,18 @@ There is a choice of multiple locator strategies that can be used during search.
 support different locator strategies, and the Inspector will try to hide strategies that are not
 supported by the current driver.
 
-After selecting the locator strategy, entering the selector string, and pressing _Search_, the
-results screen is shown.
+It is also possible to specify the search details using the search history. The Inspector saves up
+to 20 most recent search queries across sessions, and the full list can be toggled using the
+history button in the bottom left corner:
 
-If one or more elements are found, the Inspector will list the element count, time taken, and a
-list of selectable element IDs:
+![Element Search History](./assets/images/header/search-history.png)
+
+Clicking on any recorded entry changes the current locator strategy and selector to those of the
+selected entry. A separate button can also be used to clear the history.
+
+Once the locator strategy and selector string are specified, clicking the search button starts the
+element lookup, after which the results screen is shown. If one or more elements are found, the
+Inspector will list the element count, time taken, and a list of selectable element IDs:
 
 ![Element Search Results](./assets/images/header/search-results.png)
 

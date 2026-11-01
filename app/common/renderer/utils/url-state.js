@@ -2,21 +2,27 @@ import {SERVER_TYPES} from '../constants/session-builder.js';
 import {isPlainObject} from './common.js';
 import {areSessionCapsValid} from './sessionfile-parsing.js';
 
-// Server types a URL may select, and the fields it may set on them. Cloud-vendor slices are
-// excluded: they hold the saved credentials, and letting a link change only a vendor's host
-// (or the advanced proxy) would send those credentials to a server the link chose.
+// Server types a link may select, and the fields it may set on each server slice. Cloud-vendor
+// slices are excluded: a vendor falls back to credentials from environment variables, so a link
+// that selected a vendor and chose its host could send those credentials to a server of its own.
 const URL_SERVER_TYPES = [SERVER_TYPES.LOCAL, SERVER_TYPES.REMOTE];
-const URL_SERVER_FIELDS = {hostname: 'string', port: ['string', 'number'], path: 'string', ssl: 'boolean'};
+const URL_SERVER_FIELDS = {
+  [SERVER_TYPES.LOCAL]: {hostname: 'string', port: ['string', 'number'], path: 'string', ssl: 'boolean'},
+  [SERVER_TYPES.REMOTE]: {hostname: 'string', port: ['string', 'number'], path: 'string', ssl: 'boolean'},
+  [SERVER_TYPES.ADVANCED]: {allowUnauthorized: 'boolean', useProxy: 'boolean', proxy: 'string'},
+};
 
-const hasFieldType = (field, value) => [URL_SERVER_FIELDS[field]].flat().includes(typeof value);
+const hasFieldType = (fields, field, value) => [fields[field]].flat().includes(typeof value);
 
 /**
- * Reduces session builder state supplied through the `?state=` query parameter to the parts a
- * link may safely set: capabilities, a session id to attach to, and a local or remote server.
+ * Reduce session builder state supplied through the `?state=` query parameter to the parts a
+ * link may set: capabilities, a session id to attach to, and a local or remote server with its
+ * advanced options. The result replaces the saved server state (see SET_STATE_FROM_URL), so a
+ * session started from a link never uses saved cloud credentials.
  *
  * @param {unknown} state parsed `state` query parameter
- * @returns {{state: object, dropped: string[]}} the allowed state and the paths of everything
- * removed
+ * @returns {{state: object, dropped: string[]}} the allowed state, and the paths of everything
+ * that was removed
  */
 export function sanitizeUrlState(state) {
   const allowed = {};
@@ -34,12 +40,13 @@ export function sanitizeUrlState(state) {
       allowed.serverType = value;
     } else if (key === 'server' && isPlainObject(value)) {
       for (const [serverType, config] of Object.entries(value)) {
-        if (!URL_SERVER_TYPES.includes(serverType) || !isPlainObject(config)) {
+        const fields = URL_SERVER_FIELDS[serverType];
+        if (!fields || !isPlainObject(config)) {
           dropped.push(`server.${serverType}`);
           continue;
         }
         for (const [field, fieldValue] of Object.entries(config)) {
-          if (field in URL_SERVER_FIELDS && hasFieldType(field, fieldValue)) {
+          if (field in fields && hasFieldType(fields, field, fieldValue)) {
             allowed.server ??= {};
             allowed.server[serverType] ??= {};
             allowed.server[serverType][field] = fieldValue;

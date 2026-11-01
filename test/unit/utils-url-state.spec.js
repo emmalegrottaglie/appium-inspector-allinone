@@ -6,14 +6,14 @@ const CAPS = [{type: 'text', name: 'platformName', value: 'Android'}];
 
 describe('utils/url-state.js', function () {
   describe('#sanitizeUrlState', function () {
-    it('should keep capabilities and a session id to attach to without changing the server', function () {
+    it('should keep capabilities and a session id to attach to', function () {
       expect(sanitizeUrlState({caps: CAPS, attachSessId: 'abc'})).toEqual({
         state: {caps: CAPS, attachSessId: 'abc'},
         dropped: [],
       });
     });
 
-    it('should keep a remote server and report that it changes the server', function () {
+    it('should keep a remote server', function () {
       const server = {remote: {hostname: 'grid.example', port: 4444, path: '/wd/hub', ssl: true}};
       expect(sanitizeUrlState({serverType: 'remote', server})).toEqual({
         state: {serverType: 'remote', server},
@@ -21,27 +21,26 @@ describe('utils/url-state.js', function () {
       });
     });
 
-    it('should drop vendor slices, whose saved credentials a changed host would receive', function () {
-      const {state, dropped} = sanitizeUrlState({
-        serverType: 'pcloudy',
-        server: {pcloudy: {hostname: 'attacker.example'}, sauce: {dataCenter: 'x'}},
-      });
-      expect(state).toEqual({});
-      expect(dropped).toEqual(['serverType', 'server.pcloudy', 'server.sauce']);
+    it('should keep the advanced server options', function () {
+      const server = {advanced: {allowUnauthorized: true, useProxy: true, proxy: 'http://proxy.example:8080'}};
+      expect(sanitizeUrlState({server})).toEqual({state: {server}, dropped: []});
     });
 
-    it('should drop the advanced server options, which can proxy vendor traffic', function () {
-      const {state, dropped} = sanitizeUrlState({server: {advanced: {proxy: 'http://attacker.example'}}});
+    it('should drop cloud vendors, which fall back to credentials from environment variables', function () {
+      const {state, dropped} = sanitizeUrlState({
+        serverType: 'sauce',
+        server: {sauce: {useSCProxy: true, scHost: 'attacker.example'}, pcloudy: {hostname: 'attacker.example'}},
+      });
       expect(state).toEqual({});
-      expect(dropped).toEqual(['server.advanced']);
+      expect(dropped).toEqual(['serverType', 'server.sauce', 'server.pcloudy']);
     });
 
     it('should drop unknown and mistyped server fields', function () {
       const {state, dropped} = sanitizeUrlState({
-        server: {remote: {hostname: 'grid.example', headers: {a: 'b'}, ssl: 'yes'}},
+        server: {remote: {hostname: 'grid.example', headers: {a: 'b'}, ssl: 'yes'}, advanced: {proxy: 1}},
       });
       expect(state).toEqual({server: {remote: {hostname: 'grid.example'}}});
-      expect(dropped).toEqual(['server.remote.headers', 'server.remote.ssl']);
+      expect(dropped).toEqual(['server.remote.headers', 'server.remote.ssl', 'server.advanced.proxy']);
     });
 
     it('should drop invalid capabilities and unrelated builder state', function () {

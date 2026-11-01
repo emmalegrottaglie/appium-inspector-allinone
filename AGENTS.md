@@ -274,17 +274,21 @@ npm run pack:electron                                # installer (.exe) + zip (u
 - **Code generators escape every interpolated value** for the target language:
   locators, typed text and context names come from the app under test or the
   server, and the in-app runner executes the generated code. Ruby uses
-  `rubyStr()` (single-quoted, no `#{}`), Robot uses `robotArg()`, and
-  Python/JS/Java/C# use `quote()` from `common.js`. Never interpolate a value
-  raw inside quotes (`'${x}'`) or with `JSON.stringify` in Ruby/Robot.
-- **URL state is sanitized** (`utils/url-state.js`): a `?state=` link may set
-  caps, an attach session id and the local/remote server only; vendor slices
-  (saved credentials) and advanced options are dropped, and auto-start always
-  asks first, since the session would run on whichever server is selected.
-- **Sauce Labs** uses HTTPS and an allowlisted data center. The Sauce Connect
-  proxy is plain HTTP, so a proxy host other than this machine is confirmed
-  before the credentials are sent to it (the host can come from a session
-  file).
+  `getRubyString()` (single-quoted, no `#{}`), Robot uses `escapeRobotString()`,
+  and Python/JS/Java/C# use `quote()` from `common.js` (these escapers are
+  upstream's). Never interpolate a value raw inside quotes (`'${x}'`) or with
+  `JSON.stringify` in Ruby/Robot, and emit numeric values (e.g. the server port
+  in the WebdriverIO boilerplate) through `Number()`, never as raw text.
+- **URL state is sanitized and replaces the saved state** (`utils/url-state.js`,
+  `SET_STATE_FROM_URL`): a `?state=` link may set caps, an attach session id and
+  a local/remote server with its advanced options; vendor slices are dropped.
+  The server state is rebuilt from the defaults instead of merged into the saved
+  one, so a link never inherits saved cloud credentials, and `?autoStart=1`
+  only starts a session when the link also carries a state. No prompt is shown.
+- **Sauce Labs** ondemand endpoints always use HTTPS. The data center is checked
+  against `SAUCE_DATA_CENTERS` (shared with the server tab) when a session file
+  is imported (`isSessionServerValid`). The Sauce Connect proxy is plain HTTP
+  unless its **SSL** checkbox (`scSsl`) is ticked.
 
 ---
 

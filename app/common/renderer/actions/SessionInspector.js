@@ -787,6 +787,7 @@ export function getActiveAppId(automationName) {
   return async (dispatch, getState) => {
     try {
       if (automationName === DRIVERS.XCUITEST) {
+        // mobile:activeAppInfo exists since XCUITest 2.126.0 (pre-Appium 2)
         const action = applyClientMethod({
           methodName: COMMAND_EXECUTE_SCRIPT,
           args: ['mobile:activeAppInfo', []],
@@ -796,6 +797,7 @@ export function getActiveAppId(automationName) {
         dispatch({type: SET_APP_ID, appId: bundleId});
       }
       if ([DRIVERS.UIAUTOMATOR2, DRIVERS.ESPRESSO].includes(automationName)) {
+        // mobile:getCurrentPackage exists since UiA2 2.20 / Espresso 2.23 (Appium 2)
         const action = applyClientMethod({
           methodName: COMMAND_EXECUTE_SCRIPT,
           args: ['mobile:getCurrentPackage', []],
@@ -820,9 +822,17 @@ export function getServerStatus() {
 
 export function getFlatSessionCaps() {
   return async (dispatch, getState) => {
-    const action = applyClientMethod({methodName: 'getSession', skipRefresh: true});
-    const flatSessionCaps = await action(dispatch, getState);
-    dispatch({type: SET_FLAT_SESSION_CAPS, flatSessionCaps});
+    try {
+      const action = applyClientMethod({methodName: 'getAppiumSessionCapabilities', skipRefresh: true});
+      const getCapsResponse = await action(dispatch, getState);
+      const flatSessionCaps = getCapsResponse.capabilities;
+      dispatch({type: SET_FLAT_SESSION_CAPS, flatSessionCaps});
+    } catch {
+      // No longer supported since Appium 4
+      const action = applyClientMethod({methodName: 'getSession', skipRefresh: true});
+      const flatSessionCaps = await action(dispatch, getState);
+      dispatch({type: SET_FLAT_SESSION_CAPS, flatSessionCaps});
+    }
   };
 }
 
@@ -858,11 +868,11 @@ export function selectInspectorTab(interaction) {
 }
 
 export function getSupportedSessionMethods() {
-  return async (_dispatch, getState) => {
+  return async (dispatch, getState) => {
     async function safelyCallCommand(methodName) {
       try {
         const action = executeDriverCommand({methodName});
-        const {commandRes} = await action(getState);
+        const {commandRes} = await action(dispatch, getState);
         return commandRes;
       } catch {
         return [];
@@ -973,9 +983,11 @@ export function callClientMethod(params) {
 // Simple alternative to callClientMethod, for when we only want to
 // run the command without any side-effects
 export function executeDriverCommand(params) {
-  return async (getState) => {
+  return async (_dispatch, getState) => {
     const {driver} = getState().inspector;
     params.skipRefresh = true;
+    log.info(`Calling client method with params:`);
+    log.info(params);
     const inspectorDriver = InspectorDriver.instance(driver);
     return await inspectorDriver.run(params);
   };

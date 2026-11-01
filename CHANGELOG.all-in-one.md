@@ -156,14 +156,18 @@ Fixes from a whole-repository security review (finding ids refer to that report)
   comment.
 - **Sauce Labs credentials were sent over plain HTTP** (F4), to a host built from
   an unvalidated data-center string (F5). The ondemand endpoints now use HTTPS,
-  and only the offered data centers are accepted. A Sauce Connect proxy host
-  other than this machine (plain HTTP, and settable from a session file) is
-  confirmed before the credentials are sent to it.
+  and session files with a data center the Sauce tab doesn't offer are refused
+  at import. The Sauce Connect proxy stays on plain HTTP unless its new SSL
+  checkbox is ticked.
 - **A crafted `?state=` link could send saved cloud credentials to another host**
   (F2, browser/plugin builds). URL state is now limited to capabilities and a
-  local/remote server, and auto-start always asks first: even a link that sets
-  only capabilities would start a session on the selected server, which may be
-  a cloud account.
+  local/remote server with its advanced options, and it replaces the saved
+  server state instead of merging into it, so a link never inherits saved cloud
+  credentials. Auto-start only runs when the link carries a state.
+- **These three fixes now come from upstream.** They were reported to the
+  maintainers and merged there; the upstream catch-up takes upstream's reviewed
+  versions in place of this fork's earlier ones, which drops the fork's
+  confirmation prompts for link auto-start and for remote Sauce Connect proxies.
 - **IPC hardening** (defense in depth: the renderer still has Node integration,
   so these become a hard boundary once renderer isolation is enabled):
   - consent for third-party installs, major-version updates and non-loopback
