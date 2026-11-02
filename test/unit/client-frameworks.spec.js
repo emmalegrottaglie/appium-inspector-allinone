@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import DotNetNUnitFramework from '../../app/common/renderer/lib/client-frameworks/dotnet-nunit.js';
+import JavaJUnit4Framework from '../../app/common/renderer/lib/client-frameworks/java-junit4.js';
 import JavaJUnit5Framework from '../../app/common/renderer/lib/client-frameworks/java-junit5.js';
 import JsOxygenFramework from '../../app/common/renderer/lib/client-frameworks/js-oxygen.js';
 import JsWdIoFramework from '../../app/common/renderer/lib/client-frameworks/js-wdio.js';
@@ -8,31 +9,433 @@ import PythonFramework from '../../app/common/renderer/lib/client-frameworks/pyt
 import RobotFramework from '../../app/common/renderer/lib/client-frameworks/robot.js';
 import RubyFramework from '../../app/common/renderer/lib/client-frameworks/ruby.js';
 
-const SERVER_URL = 'http://127.0.0.1:4723/';
-const SERVER_URL_PARTS = {protocol: 'http', host: '127.0.0.1', port: 4723, path: '/'};
-const CAPS = {platformName: 'Android', 'appium:automationName': 'UiAutomator2'};
+const SERVER_URL = 'http://127.0.0.1:4723';
+const SERVER_URL_PARTS = {protocol: 'http', hostname: '127.0.0.1', port: '4723', path: '/'};
+const CAPS = {
+  platformName: 'Android',
+  'appium:app': null,
+  'goog:chromeOptions': {args: ['--headless'], 'mobile-emulation': null},
+};
+const SCRIPT_ARG = {elementId: null, 'some-key': 'value'};
 
-const newFramework = (Framework) => new Framework(SERVER_URL, SERVER_URL_PARTS, CAPS);
+function buildFramework(Framework) {
+  const framework = new Framework(SERVER_URL, SERVER_URL_PARTS, CAPS);
+  framework.actions = [{action: 'executeScript', params: [null, null, 'mobile: test', [SCRIPT_ARG]]}];
+  return framework;
+}
 
 describe('client-frameworks', function () {
-  describe('js-wdio', function () {
-    describe('#codeFor_executeScriptNoArgs', function () {
-      it('should pass an args array, which WebdriverIO requires', function () {
-        // A single-argument call is rejected at runtime with "Wrong parameters
-        // applied for executeScript", which aborts the whole generated test.
-        expect(newFramework(JsWdIoFramework).codeFor_executeScriptNoArgs('mobile: getDeviceTime')).toEqual(
-          'await driver.executeScript("mobile: getDeviceTime", []);',
+  describe('with null values and non-identifier keys', function () {
+    it('should preserve a top-level null script argument in Java and C#', function () {
+      for (const [Framework, expected] of [
+        [JavaJUnit4Framework, 'driver.executeScript("mobile: test", (Object) null);'],
+        [JavaJUnit5Framework, 'driver.executeScript("mobile: test", (Object) null);'],
+        [DotNetNUnitFramework, '_driver.ExecuteScript("mobile: test", (object) null);'],
+      ]) {
+        const framework = buildFramework(Framework);
+        framework.actions[0].params[3] = [null];
+        expect(framework.getCodeString(true)).toContain(expected);
+      }
+    });
+
+    it('should generate Python code using None', function () {
+      const code = buildFramework(PythonFramework).getCodeString(true);
+      expect(code).toContain(
+        '"appium:app": None,\n\t"goog:chromeOptions": {"args": ["--headless"], "mobile-emulation": None}',
+      );
+      expect(code).toContain(`driver.execute_script("mobile: test", {"elementId": None, "some-key": "value"})`);
+      expect(code).not.toContain('null');
+    });
+
+    it('should generate Ruby code using nil and quoted keys', function () {
+      const code = buildFramework(RubyFramework).getCodeString(true);
+      expect(code).toContain("caps['appium:app'] = nil");
+      expect(code).toContain("caps['goog:chromeOptions'] = {args: ['--headless'], 'mobile-emulation': nil}");
+      expect(code).toContain(`driver.execute_script 'mobile: test', {elementId: nil, 'some-key': 'value'}`);
+    });
+
+    it('should generate Java code using null', function () {
+      for (const Framework of [JavaJUnit4Framework, JavaJUnit5Framework]) {
+        const code = buildFramework(Framework).getCodeString(true);
+        expect(code).toContain('.amend("appium:app", null)');
+        expect(code).toContain(
+          '.amend("goog:chromeOptions", new HashMap<String, Object>() {{ put("args", Arrays.asList(new Object[] {"--headless"})); put("mobile-emulation", null); }})',
         );
+        expect(code).toContain(
+          'driver.executeScript("mobile: test", new HashMap<String, Object>() {{ put("elementId", null); put("some-key", "value"); }});',
+        );
+        expect(code).not.toContain('Map.entry("mobile-emulation", null)');
+      }
+    });
+
+    it('should keep Map.ofEntries for Java maps without null values', function () {
+      const framework = new JavaJUnit5Framework(SERVER_URL, SERVER_URL_PARTS, {
+        'appium:options': {noReset: true, nested: {key: 'value'}},
       });
+      expect(framework.getCodeString(true)).toContain(
+        '.amend("appium:options", Map.ofEntries(Map.entry("noReset", true), Map.entry("nested", Map.ofEntries(Map.entry("key", "value")))))',
+      );
+    });
+
+    it('should generate C# code using null', function () {
+      const code = buildFramework(DotNetNUnitFramework).getCodeString(true);
+      expect(code).toContain('options.AddAdditionalAppiumOption("appium:app", null);');
+      expect(code).toContain(
+        'options.AddAdditionalAppiumOption("goog:chromeOptions", new Dictionary<string, dynamic> {{"args", new object[] {"--headless"}}, {"mobile-emulation", null}});',
+      );
+      expect(code).toContain(
+        '_driver.ExecuteScript("mobile: test", new Dictionary<string, dynamic> {{"elementId", null}, {"some-key", "value"}});',
+      );
+    });
+
+    it('should generate Robot code using ${None}', function () {
+      const code = buildFramework(RobotFramework).getCodeString(true);
+      expect(code).toContain('appium:app=${None}');
+      expect(code).toContain('Create Dictionary    elementId=${None}    some-key=value');
+    });
+
+    it('should pass a top-level null Robot script argument as ${None}', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.codeFor_executeScriptWithArgs('mobile: test', [null])).toBe(
+        'Execute Script    mobile: test    ${None}',
+      );
+    });
+
+    it('should generate JavaScript code using null', function () {
+      for (const Framework of [JsWdIoFramework, JsOxygenFramework]) {
+        const code = buildFramework(Framework).getCodeString(true);
+        expect(code).toContain('"appium:app": null');
+        expect(code).toContain('"mobile-emulation": null');
+      }
+    });
+  });
+
+  describe('without null values', function () {
+    it('should quote Ruby hash keys that are not identifiers', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'goog:chromeOptions': {mobileEmulation: {'device-name': 'Pixel 7'}},
+      });
+      expect(framework.getCodeString(true)).toContain(
+        `caps['goog:chromeOptions'] = {mobileEmulation: {'device-name': 'Pixel 7'}}`,
+      );
+    });
+
+    it('should keep Ruby identifier keys unquoted', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {'appium:options': {noReset: true}});
+      expect(framework.getCodeString(true)).toContain("caps['appium:options'] = {noReset: true}");
+    });
+  });
+
+  describe('nested collection values', function () {
+    it('should render nullable Java lists in expression contexts for both JUnit variants', function () {
+      for (const Framework of [JavaJUnit4Framework, JavaJUnit5Framework]) {
+        const framework = new Framework(SERVER_URL, SERVER_URL_PARTS, {});
+        expect(framework.getJavaVal([null])).toBe('Arrays.asList(new Object[] {null})');
+        expect(framework.getJavaVal([])).toBe('Arrays.asList(new Object[] {})');
+        expect(framework.getJavaVal({items: [null, {nested: [true, 7]}]})).toBe(
+          'Map.ofEntries(Map.entry("items", Arrays.asList(new Object[] {null, Map.ofEntries(Map.entry("nested", Arrays.asList(new Object[] {true, 7})))})))',
+        );
+      }
+    });
+
+    it('should render heterogeneous C# arrays as nullable object array expressions', function () {
+      const framework = new DotNetNUnitFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.getCSharpVal([null, {items: [true, 7]}])).toBe(
+        'new object[] {null, new Dictionary<string, dynamic> {{"items", new object[] {true, 7}}}}',
+      );
+      expect(framework.getCSharpVal([])).toBe('new object[] {}');
+    });
+
+    it('should preserve top-level C# array script arguments as one params argument', function () {
+      const framework = new DotNetNUnitFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.codeFor_executeScriptWithArgs('mobile: test', [[1, 2]])).toBe(
+        '_driver.ExecuteScript("mobile: test", (object) new object[] {1, 2});',
+      );
+      expect(framework.codeFor_executeScriptWithArgs('mobile: test', ['value'])).toBe(
+        '_driver.ExecuteScript("mobile: test", "value");',
+      );
+      expect(framework.codeFor_executeScriptWithArgs('mobile: test', [{key: 'value'}])).toBe(
+        '_driver.ExecuteScript("mobile: test", new Dictionary<string, dynamic> {{"key", "value"}});',
+      );
+    });
+
+    it('should define nested Robot capability lists and dictionaries before opening the session', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'goog:chromeOptions': {args: ['--headless', null], extra: {flag: true}, none: null},
+      });
+      const code = framework.getCodeString(true);
+      expect(code).toContain('${value0} =    Create List    --headless    ${None}');
+      expect(code).toContain('${value1} =    Create Dictionary    flag=${True}');
+      expect(code).toContain('${value2} =    Create Dictionary    args=${value0}    extra=${value1}    none=${None}');
+      expect(code).toContain('goog:chromeOptions=${value2}');
+      expect(code.indexOf('Create List')).toBeLessThan(code.indexOf('Open Application'));
+      expect(code).not.toContain('[object Object]');
+      expect(framework.getCodeString(true)).toBe(code);
+    });
+
+    it('should build nested Robot script arguments recursively without flattening typed values', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      const code = framework.codeFor_executeScriptWithArgs('mobile: test', [{nested: {items: [null, true, 7]}}]);
+      expect(code).toContain('${value0} =    Create List    ${None}    ${True}    ${7}');
+      expect(code).toContain('${value1} =    Create Dictionary    items=${value0}');
+      expect(code).toContain('&{scriptArgument} =    Create Dictionary    nested=${value1}');
+      expect(code).toContain('Execute Script    mobile: test    ${scriptArgument}');
+      expect(code).not.toContain('[object Object]');
+    });
+  });
+
+  describe('Robot literal strings', function () {
+    it('should keep a single interior space in a script command', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.codeFor_executeScriptWithArgs('mobile: scroll', [{direction: 'down'}])).toBe(
+        '&{scriptArgument} =    Create Dictionary    direction=down\n' +
+          'Execute Script    mobile: scroll    ${scriptArgument}',
+      );
+    });
+
+    it('should escape script commands as one literal Robot cell', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      const code = framework.codeFor_executeScriptWithArgs('${command}    #\n\r\t\x7f', [{key: 'value'}]);
+      expect(code).toBe(
+        '&{scriptArgument} =    Create Dictionary    key=value\n' +
+          String.raw`Execute Script    \${command}\x20\x20\x20\x20\#\n\r\t\x7f` +
+          '    ${scriptArgument}',
+      );
+    });
+
+    it.each([
+      ['', '${EMPTY}'],
+      ['mobile: scroll', 'mobile: scroll'],
+      ['alpha  beta', String.raw`alpha\x20\x20beta`],
+      [' alpha', String.raw`\x20alpha`],
+      ['alpha ', String.raw`alpha\x20`],
+      ['alpha\tbeta', String.raw`alpha\tbeta`],
+      ['alpha \tbeta', String.raw`alpha\x20\tbeta`],
+      ['alpha\t beta', String.raw`alpha\t\x20beta`],
+      ['alpha \n beta', String.raw`alpha\x20\n\x20beta`],
+      ['alpha \u00a0 beta', String.raw`alpha\x20\xa0\x20beta`],
+      ['alpha\x00beta', String.raw`alpha\x00beta`],
+      ['😀 beta', '😀 beta'],
+      [' alpha    beta ', String.raw`\x20alpha\x20\x20\x20\x20beta\x20`],
+      ['line\r\n\tend', String.raw`line\r\n\tend`],
+      [String.raw`\new\path`, String.raw`\\new\\path`],
+      ['${None} @{items} &{dict} %{HOME}', String.raw`\${None} \@{items} \&{dict} \%{HOME}`],
+      ['# comment|a=b', String.raw`\# comment\|a\=b`],
+      ['ok\n    Fail    injected', String.raw`ok\n\x20\x20\x20\x20Fail\x20\x20\x20\x20injected`],
+    ])('should preserve literal string %j as one inert Robot cell', function (value, expected) {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.getRobotVal(value)).toBe(expected);
+    });
+
+    it.each(Array.from({length: 33}, (_, index) => 0x7f + index))(
+      'should encode C1/DEL control U+%i as literal data',
+      function (code) {
+        const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {});
+        expect(framework.getRobotVal(String.fromCharCode(code))).toBe(`\\x${code.toString(16)}`);
+      },
+    );
+
+    it('should escape keys at every dictionary boundary', function () {
+      const framework = new RobotFramework(SERVER_URL, SERVER_URL_PARTS, {'a=b': {'${None}': ' a=b '}});
+      const code = framework.getCodeString(true);
+      expect(code).toContain(String.raw`Create Dictionary    \${None}=\x20a\=b\x20`);
+      expect(code).toContain('a\\=b=${value0}');
+      expect(framework.codeFor_executeScriptWithArgs('mobile: test', [{'a=b': {'': ''}}])).toContain(
+        'Create Dictionary    a\\=b=${value0}',
+      );
+    });
+  });
+
+  describe('Ruby hash key escaping', function () {
+    it('should keep identifier keys bare and single-quote other keys', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.getRubyKey('noReset')).toBe('noReset');
+      expect(framework.getRubyKey('_private')).toBe('_private');
+      // A double-quoted Ruby label would evaluate `#{...}` as interpolation.
+      expect(framework.getRubyKey('#{$key_evaluated = true}')).toBe(String.raw`'#{$key_evaluated = true}'`);
+      // Single-quoted Ruby strings only escape backslashes and apostrophes.
+      expect(framework.getRubyKey("a'b")).toBe(String.raw`'a\'b'`);
+      expect(framework.getRubyKey('c\\d')).toBe(String.raw`'c\\d'`);
+    });
+
+    it('should emit interpolation-looking keys as literal single-quoted symbols', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'goog:chromeOptions': {'#{$key_evaluated = true}': 'value'},
+      });
+      const code = framework.getCodeString(true);
+      expect(code).toContain(String.raw`caps['goog:chromeOptions'] = {'#{$key_evaluated = true}': 'value'}`);
+      // The removed JSON.stringify path emitted a double-quoted label, which Ruby evaluates.
+      expect(code).not.toContain('"#{$key_evaluated = true}":');
+    });
+
+    it('should escape apostrophes and backslashes in generated Ruby keys', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'goog:chromeOptions': {"a'b": 'v1', 'c\\d': 'v2'},
+      });
+      expect(framework.getCodeString(true)).toContain(
+        String.raw`caps['goog:chromeOptions'] = {'a\'b': 'v1', 'c\\d': 'v2'}`,
+      );
+    });
+
+    it.each([
+      ['line\r\nkey', String.raw`"line\r\nkey"`],
+      ['line\rkey', String.raw`"line\rkey"`],
+      ['line\nkey', String.raw`"line\nkey"`],
+      ["line\r\n\\#{$key_evaluated = true}'", String.raw`"line\r\n\\\#{$key_evaluated = true}'"`],
+    ])('should preserve line-break bytes without enabling interpolation: %j', function (key, expected) {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.getRubyKey(key)).toBe(expected);
+    });
+
+    it('should preserve line-break keys inside nested Ruby hashes and arrays', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'goog:chromeOptions': {nested: [{'line\r\n#{$key_evaluated = true}': null}]},
+      });
+      expect(framework.getCodeString(true)).toContain(
+        String.raw`caps['goog:chromeOptions'] = {nested: [{"line\r\n\#{$key_evaluated = true}": nil}]}`,
+      );
+    });
+  });
+
+  describe('Ruby literal strings', function () {
+    it.each([
+      ['', "''"],
+      ['#{system("id")}', String.raw`'#{system("id")}'`],
+      ['#@x #$x', "'#@x #$x'"],
+      ["a'b", String.raw`'a\'b'`],
+      [String.raw`c\d`, String.raw`'c\\d'`],
+      ['line\n#{x}', String.raw`"line\n\#{x}"`],
+      ['line\r#@x #$x', String.raw`"line\r\#@x \#$x"`],
+      ["line\r\n\\#{x}'", String.raw`"line\r\n\\\#{x}'"`],
+      ['a\ud83d\nb', '"a\ud83d\\nb"'],
+      ['a\udc00\rb', '"a\udc00\\rb"'],
+      ['line\n"quoted"', String.raw`"line\n\"quoted\""`],
+    ])('should preserve string value %j without interpolation', function (value, expected) {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {value});
+      expect(framework.getRubyVal(value)).toBe(expected);
+      expect(framework.getCodeString(true)).toContain(`caps['value'] = ${expected}`);
+    });
+
+    it('should keep top-level capability keys and nested values literal', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {
+        'a#{x}': '#{system("id")}',
+        'line\n#{x}': {items: ["a'b", 'line\n#{x}', 7, true, false, null]},
+      });
+      const code = framework.getCodeString(true);
+      expect(code).toContain(String.raw`caps['a#{x}'] = '#{system("id")}'`);
+      expect(code).toContain(String.raw`caps["line\n\#{x}"] = {items: ['a\'b', "line\n\#{x}", 7, true, false, nil]}`);
+    });
+
+    it.each([
+      ['codeFor_elementSendKeys', ['el1', 0], 'el1[0].send_keys'],
+      ['codeFor_executeScriptNoArgs', [], 'driver.execute_script'],
+      ['codeFor_switchAppiumContext', [null, null], 'driver.context ='],
+      ['codeFor_installApp', [null, null], 'driver.install_app'],
+      ['codeFor_isAppInstalled', [null, null], 'is_app_installed = driver.app_installed?'],
+      ['codeFor_activateApp', [null, null], 'driver.activate_app'],
+      ['codeFor_terminateApp', [null, null], 'driver.terminate_app'],
+      ['codeFor_removeApp', [null, null], 'driver.remove_app'],
+      ['codeFor_queryAppState', [null, null], 'app_state = driver.query_app_state'],
+      ['codeFor_pullFile', [null, null], 'driver.pull_file'],
+      ['codeFor_pullFolder', [null, null], 'driver.pull_folder'],
+      ['codeFor_navigateTo', [null, null], 'driver.get'],
+      ['codeFor_switchToWindow', [null, null], 'driver.switch_to.window'],
+    ])('should escape user strings in %s', function (method, args, prefix) {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      const value = "a'\\#{x} #@x #$x";
+      expect(framework[method](...args, value)).toBe(`${prefix} ${String.raw`'a\'\\#{x} #@x #$x'`}`);
+    });
+
+    it('should escape locators, script arguments, settings and both file arguments', function () {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework.codeFor_findAndAssign('id', "a'b\\#{x}", 'el1', false)).toBe(
+        String.raw`el1 = driver.find_element :id, 'a\'b\\#{x}'`,
+      );
+      expect(framework.codeFor_findAndAssign('id', 'line\n#{x}', 'els', true)).toBe(
+        String.raw`els = driver.find_elements :id, "line\n\#{x}"`,
+      );
+      expect(framework.codeFor_executeScriptWithArgs("a'b", ['#{system("id")}'])).toBe(
+        String.raw`driver.execute_script 'a\'b', '#{system("id")}'`,
+      );
+      expect(framework.codeFor_updateSettings(null, null, {value: '#@x #$x'})).toBe(
+        "driver.update_settings({value: '#@x #$x'})",
+      );
+      expect(framework.codeFor_pushFile(null, null, "a'b", 'line\n#{x}')).toBe(
+        String.raw`driver.push_file 'a\'b', "line\n\#{x}"`,
+      );
+    });
+
+    it.each([
+      ['codeFor_getLogs', 'Server Log', "logs = driver.logs.get :'server log'"],
+      ['codeFor_setOrientation', 'LAND SCAPE', "driver.rotation = :'land scape'"],
+    ])('should quote user strings as symbols in %s', function (method, value, expected) {
+      const framework = new RubyFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      expect(framework[method](null, null, value)).toBe(expected);
+    });
+
+    it('should escape the server URL in the boilerplate', function () {
+      const framework = new RubyFramework("http://localhost/a'b/#{x}", SERVER_URL_PARTS, {});
+      expect(framework.getCodeString(true)).toContain(
+        String.raw`core = Appium::Core.for url: 'http://localhost/a\'b/#{x}', caps: caps`,
+      );
+    });
+  });
+
+  describe('server and app string escaping (JSON-literal generators)', function () {
+    // A context name from the app under test that tries to close the string literal and append code.
+    const HOSTILE = String.raw`a") + os.system("id") + ("`;
+
+    it.each([
+      [PythonFramework, 'driver.switch_to.context('],
+      [JsWdIoFramework, 'await driver.switchAppiumContext('],
+      [JsOxygenFramework, 'mob.setContext('],
+      [JavaJUnit5Framework, 'driver.context('],
+      [DotNetNUnitFramework, '_driver.Context = '],
+    ])('should keep a hostile context name one quoted literal in %o', function (Framework, marker) {
+      const framework = new Framework(SERVER_URL, SERVER_URL_PARTS, {});
+      const line = framework.codeFor_switchAppiumContext(null, null, HOSTILE);
+      // quote() is the single escaper; the generated call must embed exactly its output
+      expect(line).toContain(marker + framework.quote(HOSTILE));
+    });
+
+    it('should escape U+2028/U+2029 line separators that would break a JS string', function () {
+      const framework = new JsWdIoFramework(SERVER_URL, SERVER_URL_PARTS, {});
+      const input = 'a' + String.fromCharCode(0x2028) + 'b' + String.fromCharCode(0x2029) + 'c';
+      const quoted = framework.quote(input);
+      expect(quoted).toBe('"a\\u2028b\\u2029c"');
+    });
+
+    it('should escape both file arguments in Java pushFile', function () {
+      const framework = new JavaJUnit5Framework(SERVER_URL, SERVER_URL_PARTS, {});
+      const line = framework.codeFor_pushFile(null, null, '/sd/a").concat("', 'Zm9v');
+      expect(line).toContain(framework.quote('/sd/a").concat("'));
+      expect(line).toContain(framework.quote('Zm9v'));
+    });
+  });
+});
+
+// All-in-one fork: the in-app test runner executes generated JS/TS directly, so the output must
+// be runnable and must report failure through the exit code.
+describe('client-frameworks (in-app runner)', function () {
+  const newFramework = (Framework, serverUrlParts = SERVER_URL_PARTS) =>
+    new Framework(SERVER_URL, serverUrlParts, {platformName: 'Android'});
+
+  describe('js-wdio', function () {
+    it('should pass an args array to executeScript, which WebdriverIO requires', function () {
+      // A single-argument call is rejected at runtime with "Wrong parameters applied for
+      // executeScript", which aborts the whole generated test.
+      expect(newFramework(JsWdIoFramework).codeFor_executeScriptNoArgs('mobile: getDeviceTime')).toEqual(
+        'await driver.executeScript("mobile: getDeviceTime", []);',
+      );
     });
 
     describe('#wrapWithBoilerplate', function () {
       const boilerplate = () => newFramework(JsWdIoFramework).wrapWithBoilerplate('await driver.pause(1);');
 
       it('should exit non-zero when the test throws', function () {
-        // Ruby/JS runs have no JUnit report, so the Tests panel derives pass/fail
-        // from the exit code. Swallowing the error (the previous
-        // `main().catch(console.log)`) reported a failing test as PASSED.
+        // Ruby/JS runs have no JUnit report, so the Tests panel derives pass/fail from the exit
+        // code. Swallowing the error (the previous `main().catch(console.log)`) reported a
+        // failing test as PASSED.
         expect(boilerplate()).toContain('process.exitCode = 1');
         expect(boilerplate()).not.toContain('main().catch(console.log)');
       });
@@ -49,11 +452,8 @@ describe('client-frameworks', function () {
       });
 
       it('should fail the run when only teardown fails', function () {
-        // The teardown catch must not swallow the failure outright: a body that
-        // passed still has to report FAILED if the session could not be ended,
-        // otherwise the badge shows PASSED beside a teardown stack trace.
-        // Slice out just the teardown handler: the outer main().catch sets an exit
-        // code too, so an unbounded slice would pass with the teardown one removed.
+        // Slice out just the teardown handler: the outer main().catch sets an exit code too, so
+        // an unbounded slice would pass with the teardown one removed.
         const teardownCatch = boilerplate().split('deleteSession().catch')[1].split('main().catch')[0];
         expect(teardownCatch).toContain('process.exitCode = 1');
       });
@@ -61,122 +461,25 @@ describe('client-frameworks', function () {
       it('should place the test body inside the try block', function () {
         expect(boilerplate()).toContain('    await driver.pause(1);');
       });
+
+      it('should emit the port as a number, never as raw code', function () {
+        // The session connects with parseInt(port), so a port string with trailing code still
+        // connects; it must not be pasted into the generated test unquoted.
+        const code = newFramework(JsWdIoFramework, {
+          ...SERVER_URL_PARTS,
+          port: "4723, x: require('child_process').execSync('id')",
+        }).wrapWithBoilerplate('');
+        expect(code).not.toContain('child_process');
+        expect(newFramework(JsWdIoFramework).wrapWithBoilerplate('')).toContain('port: 4723,');
+      });
     });
   });
 
   describe('js-oxygen', function () {
-    describe('#codeFor_executeScriptNoArgs', function () {
-      it('should pass an args array, since getDriver() exposes the wdio driver', function () {
-        expect(newFramework(JsOxygenFramework).codeFor_executeScriptNoArgs('mobile: getDeviceTime')).toEqual(
-          'mob.getDriver().executeScript("mobile: getDeviceTime", []);',
-        );
-      });
-    });
-  });
-
-  // Locators, typed text and context names come from the app under test or the Appium server,
-  // so generated code must treat them as data. Each language's real interpreter was used to
-  // confirm these literals evaluate back to the original value.
-  describe('escaping of interpolated values', function () {
-    const LINE_SEPARATOR = String.fromCharCode(0x2028);
-
-    describe('common #quote', function () {
-      const fw = () => newFramework(PythonFramework);
-
-      it('should escape quotes, backslashes and line breaks like JSON', function () {
-        expect(fw().quote('a"b\\c\nd')).toEqual('"a\\"b\\\\c\\nd"');
-      });
-
-      it('should escape the line terminators JSON leaves raw', function () {
-        expect(fw().quote(`a${LINE_SEPARATOR}b`)).toEqual('"a\\u2028b"');
-      });
-
-      it('should keep an unsupported locator on the comment line', function () {
-        const code = fw().handleUnsupportedLocatorStrategy('css selector', 'x\nimport os');
-        expect(code.split('\n')).toHaveLength(1);
-        expect(code.startsWith('# ')).toBe(true);
-      });
-    });
-
-    describe('ruby', function () {
-      const fw = () => newFramework(RubyFramework);
-
-      it('should emit single-quoted literals, which do not interpolate #{}', function () {
-        expect(fw().rubyStr('x#{system("id")}')).toEqual(`'x#{system("id")}'`);
-        expect(fw().codeFor_findAndAssign('xpath', '//a[@text="#{`id`}"]', 'el1')).toEqual(
-          `el1 = driver.find_element :xpath, '//a[@text="#{\`id\`}"]'`,
-        );
-      });
-
-      it('should escape single quotes and backslashes', function () {
-        expect(fw().rubyStr("a'b\\")).toEqual("'a\\'b\\\\'");
-      });
-
-      it('should escape a server-supplied context name', function () {
-        expect(fw().codeFor_switchAppiumContext(null, null, "x'; system('id'); '")).toEqual(
-          "driver.context = 'x\\'; system(\\'id\\'); \\''",
-        );
-      });
-
-      it('should render capabilities as Ruby values', function () {
-        expect(fw().getRubyVal({'a-b': null, n: 1, s: '#{x}'})).toEqual("{'a-b': nil, 'n': 1, 's': '#{x}'}");
-      });
-    });
-
-    describe('robot', function () {
-      const fw = () => newFramework(RobotFramework);
-
-      it.each([
-        ['${{__import__("os").system("id")}}', '\\${{__import__("os").system("id")}}'],
-        ['@{a} &{b} %{c}', '\\@{a} \\&{b} \\%{c}'],
-        ['a  b', 'a \\ b'],
-        ['locator=x', 'locator\\=x'],
-        ['a\nb\tc', 'a\\nb\\tc'],
-        ['# not a comment', '\\# not a comment'],
-        [' padded ', '${EMPTY} padded ${EMPTY}'],
-        ['end\\ ', 'end\\\\ ${EMPTY}'],
-        ['a\u00a0\u00a0#b', 'a\u00a0\\\u00a0#b'],
-        ['x \u3000y', 'x \\\u3000y'],
-        ['back\\slash', 'back\\\\slash'],
-        [`a${LINE_SEPARATOR}b`, 'a\\u2028b'],
-        ['', '${EMPTY}'],
-      ])('should escape %j as one literal cell', function (value, expected) {
-        expect(fw().robotArg(value)).toEqual(expected);
-      });
-
-      it('should escape the locator but keep the strategy prefix', function () {
-        expect(fw().codeFor_findAndAssign('xpath', '//a[@text="${x}"]', 'el1')).toEqual(
-          '${el1} =    Set Variable     xpath=//a[@text\\="\\${x}"]',
-        );
-      });
-
-      it('should escape typed text and context names', function () {
-        expect(fw().codeFor_elementSendKeys('el1', null, 'a    Log    x')).toEqual(
-          'Input Text    ${el1}    a \\ \\ \\ Log \\ \\ \\ x',
-        );
-        expect(fw().codeFor_switchAppiumContext(null, null, 'WEBVIEW\n    Evaluate    1')).toEqual(
-          'Switch To Context    WEBVIEW\\n \\ \\ \\ Evaluate \\ \\ \\ 1',
-        );
-      });
-    });
-
-    describe.each([
-      ['python', () => PythonFramework, `driver.switch_to.context("x\\");evil(\\"")`],
-      ['java', () => JavaJUnit5Framework, `driver.context("x\\");evil(\\"");`],
-      ['dotnet', () => DotNetNUnitFramework, `_driver.Context = "x\\");evil(\\"";`],
-      ['js-wdio', () => JsWdIoFramework, `await driver.switchAppiumContext("x\\");evil(\\"");`],
-      ['js-oxygen', () => JsOxygenFramework, `mob.setContext("x\\");evil(\\"");`],
-    ])('%s', function (_name, getFramework, expectedContextSwitch) {
-      it('should escape a server-supplied context name', function () {
-        expect(newFramework(getFramework()).codeFor_switchAppiumContext(null, null, 'x");evil("')).toEqual(
-          expectedContextSwitch,
-        );
-      });
-
-      it('should generate a full test when a capability is null', function () {
-        const fw = new (getFramework())(SERVER_URL, SERVER_URL_PARTS, {...CAPS, 'appium:nullable': null});
-        expect(() => fw.getCodeString(true)).not.toThrow();
-      });
+    it('should pass an args array to executeScript, since getDriver() exposes the wdio driver', function () {
+      expect(newFramework(JsOxygenFramework).codeFor_executeScriptNoArgs('mobile: getDeviceTime')).toEqual(
+        'mob.getDriver().executeScript("mobile: getDeviceTime", []);',
+      );
     });
   });
 });

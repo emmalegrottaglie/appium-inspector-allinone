@@ -7,18 +7,21 @@ export default class JavaFramework extends CommonClientFramework {
   static refractorLib = refractorJava;
 
   getJavaVal(jsonVal) {
-    if (jsonVal === null) {
-      return 'null';
-    } else if (Array.isArray(jsonVal)) {
+    if (Array.isArray(jsonVal)) {
       const convertedItems = jsonVal.map((item) => this.getJavaVal(item));
-      return `{${convertedItems.join(', ')}}`;
-    } else if (typeof jsonVal === 'object') {
-      const convertedItems = Object.entries(jsonVal)
-        .filter(([, v]) => v !== undefined)
-        .map(([k, v]) => `Map.entry(${this.quote(k)}, ${this.getJavaVal(v)})`);
+      // The explicit array keeps empty and single-null lists safe from varargs ambiguity.
+      return `Arrays.asList(new Object[] {${convertedItems.join(', ')}})`;
+    } else if (jsonVal !== null && typeof jsonVal === 'object') {
+      const entries = Object.entries(jsonVal).filter(([, v]) => v !== undefined);
+      // Map.entry and Map.ofEntries throw on null values, so maps holding nulls use a HashMap
+      if (entries.some(([, v]) => v === null)) {
+        const putCalls = entries.map(([k, v]) => `put(${JSON.stringify(k)}, ${this.getJavaVal(v)});`);
+        return `new HashMap<String, Object>() {{ ${putCalls.join(' ')} }}`;
+      }
+      const convertedItems = entries.map(([k, v]) => `Map.entry(${JSON.stringify(k)}, ${this.getJavaVal(v)})`);
       return `Map.ofEntries(${convertedItems.join(', ')})`;
     }
-    return typeof jsonVal === 'string' ? this.quote(jsonVal) : JSON.stringify(jsonVal);
+    return JSON.stringify(jsonVal);
   }
 
   getBoilerplateParams() {
@@ -46,7 +49,7 @@ export default class JavaFramework extends CommonClientFramework {
     })();
     const capStr = this.indent(
       Object.entries(this.caps)
-        .map(([k, v]) => `.amend(${this.quote(k)}, ${this.getJavaVal(v)})`)
+        .map(([k, v]) => `.amend(${JSON.stringify(k)}, ${this.getJavaVal(v)})`)
         .join('\n'),
       6,
     );
@@ -74,9 +77,13 @@ export default class JavaFramework extends CommonClientFramework {
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
     if (isArray) {
-      return `WebElements ${localVar} = driver.findElements(AppiumBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
+      return `WebElements ${localVar} = driver.findElements(AppiumBy.${
+        suffixMap[strategy]
+      }(${JSON.stringify(locator)}));`;
     } else {
-      return `WebElement ${localVar} = driver.findElement(AppiumBy.${suffixMap[strategy]}(${this.quote(locator)}));`;
+      return `WebElement ${localVar} = driver.findElement(AppiumBy.${suffixMap[strategy]}(${JSON.stringify(
+        locator,
+      )}));`;
     }
   }
 
@@ -96,7 +103,7 @@ export default class JavaFramework extends CommonClientFramework {
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `${this.getVarName(varName, varIndex)}.sendKeys(${this.quote(text)});`;
+    return `${this.getVarName(varName, varIndex)}.sendKeys(${JSON.stringify(text)});`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -139,7 +146,8 @@ driver.perform(Arrays.asList(swipe));
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg) {
     // Java dictionary needs to use the Map.ofEntries(Map.entry() ...) syntax
-    return `driver.executeScript(${this.quote(scriptCmd)}, ${this.getJavaVal(jsonArg[0])});`;
+    const scriptArgVal = jsonArg[0] === null ? '(Object) null' : this.getJavaVal(jsonArg[0]);
+    return `driver.executeScript(${this.quote(scriptCmd)}, ${scriptArgVal});`;
   }
 
   codeFor_updateSettings(varNameIgnore, varIndexIgnore, settingsJson) {
@@ -150,7 +158,7 @@ driver.perform(Arrays.asList(swipe));
       );
       return settings.join('\n');
     } catch {
-      return `// Could not parse: ${this.quote(JSON.stringify(settingsJson))}`;
+      return `// Could not parse: ${JSON.stringify(settingsJson)}`;
     }
   }
 

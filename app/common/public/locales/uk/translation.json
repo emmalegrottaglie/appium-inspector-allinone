@@ -143,6 +143,7 @@
   "US-West": "Захід США 1",
   "US-East": "Схід США 4",
   "EU-Central": "Центральний ЄС 1",
+  "Asia-South": "Південна Азія 2",
   "proxyThroughSC": "Проксі через Sauce Connect Selenium Relay",
   "text": "текст",
   "boolean": "логічний тип",
@@ -325,6 +326,7 @@
   "enterSessionID": "Введіть ідентифікатор сесії для приєднання вручну",
   "refreshDiscoveredSessions": "Оновити відкриті сесії",
   "toggleMultiDisplayMode": "Перемкнути багатоекранний режим",
+  "defaultDisplay": "Типовий дисплей",
   "toggleActiveWindowSelection": "Перемкнути вибору активного вікна",
   "focusedWindow": "Зафокушене вікно",
   "topmostWindow": "Найвище вікно",
@@ -334,5 +336,8 @@
   "w3cActionsUnsupported": "Дії W3C не підтримуються на цій платформі",
   "Customize Visible Attributes": "Змінити видимі атрибути",
   "importantAttributesDescription": "Виберіть, які атрибути з’являються у компактному дереві вихідного коду. Виберіть атрибут або введіть назву, щоб додати його. Зміни зберігаються між сесіями.",
-  "Restore Default Attributes": "Відновити атрибути за замовчуванням"
+  "Restore Default Attributes": "Відновити атрибути за замовчуванням",
+  "searchHistory": "Search History:",
+  "toggleSearchHistory": "Toggle Search History",
+  "clearSearchHistory": "Clear Search History"
 }

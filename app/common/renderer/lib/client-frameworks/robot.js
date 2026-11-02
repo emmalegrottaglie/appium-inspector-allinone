@@ -2,65 +2,77 @@ import refractorRobot from 'refractor/robotframework';
 
 import CommonClientFramework from './common.js';
 
-// Other control characters, and the separators Python's splitlines() (which Robot uses to
-// read a file) treats as line breaks, are written as \uXXXX escapes.
-function escapeUnsafeChar(ch) {
-  const code = ch.charCodeAt(0);
-  const unsafe = code < 0x20 || code === 0x7f || code === 0x85 || code === 0x2028 || code === 0x2029;
-  return unsafe ? `\\u${code.toString(16).padStart(4, '0')}` : ch;
-}
+// Characters with a short Robot escape: common whitespace and Robot syntax characters
+const ROBOT_ESCAPES = new Map([
+  ['\n', '\\n'],
+  ['\r', '\\r'],
+  ['\t', '\\t'],
+  ...Array.from('\\$@&%#=|', (character) => [character, `\\${character}`]),
+]);
 
 export default class RobotFramework extends CommonClientFramework {
   static readableName = 'Robot Framework';
   static refractorLang = 'robot';
   static refractorLib = refractorRobot;
 
-  // Escape a value so Robot Framework reads it as exactly one literal argument. Values such as
-  // locators come from the app's page source, so they must not be able to inject variables,
-  // inline Python evaluation (${{...}}), named arguments, extra cells or extra lines.
-  robotArg(value) {
-    const str = String(value);
-    if (!str) {
+  // User strings must stay in one literal cell, not become Robot syntax or keywords.
+  escapeRobotString(value) {
+    if (value === '') {
       return '${EMPTY}';
     }
-    let escaped = Array.from(
-      str
-        .replace(/\\/g, '\\\\')
-        .replace(/([$@&%])\{/g, '\\$1{')
-        .replace(/=/g, '\\=')
-        .replace(/\n/g, '\\n')
-        .replace(/\r/g, '\\r')
-        .replace(/\t/g, '\\t'),
-      escapeUnsafeChar,
-    )
-      .join('')
-      // Robot splits cells on runs of two or more whitespace characters (Unicode spaces such as
-      // NBSP included), so every whitespace character after the first in a run is escaped
-      .replace(/\s{2,}/g, (run) => Array.from(run, (ch, i) => (i ? `\\${ch}` : ch)).join(''))
-      .replace(/^#/, '\\#');
-    // Robot strips whitespace at either end of a cell; an empty variable there keeps it
-    if (/^\s/.test(escaped)) {
-      escaped = `\${EMPTY}${escaped}`;
-    }
-    if (/\s$/.test(escaped)) {
-      escaped = `${escaped}\${EMPTY}`;
-    }
-    return escaped;
+    const characters = Array.from(value);
+    return characters
+      .map((character, index) => {
+        if (ROBOT_ESCAPES.has(character)) {
+          return ROBOT_ESCAPES.get(character);
+        }
+        // A single interior space is legal in a space-separated Robot cell.
+        if (
+          character === ' ' &&
+          index > 0 &&
+          index < characters.length - 1 &&
+          !/\s/.test(characters[index - 1]) &&
+          !/\s/.test(characters[index + 1])
+        ) {
+          return character;
+        }
+        const code = character.charCodeAt(0);
+        const isControl = code < 0x20 || (code >= 0x7f && code <= 0x9f);
+        if (!/\s/.test(character) && !isControl) {
+          return character;
+        }
+        const hex = code.toString(16).padStart(code <= 0xff ? 2 : 4, '0');
+        return `\\${code <= 0xff ? 'x' : 'u'}${hex}`;
+      })
+      .join('');
   }
 
-  getRobotVal(jsonVal) {
+  getRobotVal(jsonVal, variables = []) {
     if (jsonVal === null) {
       return '${None}';
     } else if (typeof jsonVal === 'boolean') {
       return jsonVal ? '${True}' : '${False}';
     } else if (typeof jsonVal === 'number') {
       return `$\{${jsonVal}}`;
+    } else if (typeof jsonVal === 'object') {
+      const isList = Array.isArray(jsonVal);
+      const items = isList
+        ? jsonVal.map((value) => this.getRobotVal(value, variables))
+        : Object.entries(jsonVal)
+            .filter(([, value]) => value !== undefined)
+            .map(([key, value]) => `${this.escapeRobotString(key)}=${this.getRobotVal(value, variables)}`);
+      const variable = `$\{value${variables.length}}`;
+      variables.push(`${variable} =    Create ${isList ? 'List' : 'Dictionary'}    ${items.join('    ')}`);
+      return variable;
     }
-    return this.robotArg(jsonVal);
+    return typeof jsonVal === 'string' ? this.escapeRobotString(jsonVal) : jsonVal;
   }
 
   wrapWithBoilerplate(code) {
-    const capsParams = Object.entries(this.caps).map(([k, v]) => `${this.robotArg(k)}=${this.getRobotVal(v)}`);
+    const variables = [];
+    const capsParams = Object.entries(this.caps).map(
+      ([k, v]) => `${this.escapeRobotString(k)}=${this.getRobotVal(v, variables)}`,
+    );
     return `# This sample code supports Appium Robot client >=2
 # pip install robotframework-appiumlibrary
 # Then you can paste this into a file and simply run with Robot
@@ -76,7 +88,8 @@ Test Teardown     Close Application
 
 *** Test Cases ***
 Test Case Name
-    Open Application    ${this.robotArg(this.serverUrl)}    ${capsParams.join('    ')}
+${this.indent(variables.join('\n'), 4)}
+    Open Application    ${this.escapeRobotString(this.serverUrl)}    ${capsParams.join('    ')}
 ${this.indent(code, 4)}
 `;
   }
@@ -102,7 +115,7 @@ ${this.indent(code, 4)}
       return this.handleUnsupportedLocatorStrategy(strategy, locator);
     }
 
-    return `$\{${localVar}} =    Set Variable     ${suffixMap[strategy]}=${this.robotArg(locator)}`;
+    return `$\{${localVar}} =    Set Variable     ${suffixMap[strategy]}=${this.escapeRobotString(locator)}`;
   }
 
   codeFor_elementClick(varName, varIndex) {
@@ -114,7 +127,7 @@ ${this.indent(code, 4)}
   }
 
   codeFor_elementSendKeys(varName, varIndex, text) {
-    return `Input Text    $\{${this.getVarName(varName, varIndex)}}    ${this.robotArg(text)}`;
+    return `Input Text    $\{${this.getVarName(varName, varIndex)}}    ${this.escapeRobotString(text)}`;
   }
 
   codeFor_tap(varNameIgnore, varIndexIgnore, pointerActions) {
@@ -132,16 +145,21 @@ Tap With Positions    $\{100}    $\{positions}`;
   // Top-Level Commands
 
   codeFor_executeScriptNoArgs(scriptCmd) {
-    return `Execute Script    ${this.robotArg(scriptCmd)}`;
+    return `Execute Script    ${this.escapeRobotString(scriptCmd)}`;
   }
 
   codeFor_executeScriptWithArgs(scriptCmd, jsonArg, varAssignment = '') {
+    if (jsonArg[0] === null) {
+      return `${varAssignment}Execute Script    ${this.escapeRobotString(scriptCmd)}    $\{None}`;
+    }
+    const variables = [];
     // change the JSON object into a format accepted by Create Dictionary: a sequence of key=value
     const argsValuesStrings = Object.entries(jsonArg[0])
       .filter(([, v]) => v !== undefined)
-      .map(([k, v]) => `${this.robotArg(k)}=${this.getRobotVal(v)}`);
-    return `&{scriptArgument} =    Create Dictionary    ${argsValuesStrings.join('    ')}
-${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgument}`;
+      .map(([k, v]) => `${this.escapeRobotString(k)}=${this.getRobotVal(v, variables)}`);
+    variables.push(`&{scriptArgument} =    Create Dictionary    ${argsValuesStrings.join('    ')}`);
+    return `${variables.join('\n')}
+${varAssignment}Execute Script    ${this.escapeRobotString(scriptCmd)}    $\{scriptArgument}`;
   }
 
   codeFor_updateSettings() {
@@ -202,7 +220,7 @@ ${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgume
   }
 
   codeFor_switchAppiumContext(varNameIgnore, varIndexIgnore, name) {
-    return `Switch To Context    ${this.robotArg(name)}`;
+    return `Switch To Context    ${this.escapeRobotString(name)}`;
   }
 
   // Device Interaction
@@ -246,7 +264,7 @@ ${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgume
   // App Management
 
   codeFor_installApp(varNameIgnore, varIndexIgnore, app) {
-    return `Install App    ${this.robotArg(app)}`;
+    return `Install App    ${this.escapeRobotString(app)}`;
   }
 
   codeFor_isAppInstalled() {
@@ -254,15 +272,15 @@ ${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgume
   }
 
   codeFor_activateApp(varNameIgnore, varIndexIgnore, app) {
-    return `Activate Application    ${this.robotArg(app)}`;
+    return `Activate Application    ${this.escapeRobotString(app)}`;
   }
 
   codeFor_terminateApp(varNameIgnore, varIndexIgnore, app) {
-    return `Terminate Application    ${this.robotArg(app)}`;
+    return `Terminate Application    ${this.escapeRobotString(app)}`;
   }
 
   codeFor_removeApp(varNameIgnore, varIndexIgnore, app) {
-    return `Remove Application    ${this.robotArg(app)}`;
+    return `Remove Application    ${this.escapeRobotString(app)}`;
   }
 
   codeFor_queryAppState() {
@@ -272,21 +290,21 @@ ${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgume
   // File Transfer
 
   codeFor_pushFile(varNameIgnore, varIndexIgnore, pathToInstallTo, fileContentString) {
-    return `Push File    ${this.robotArg(pathToInstallTo)}    ${this.robotArg(fileContentString)}`;
+    return `Push File    ${this.escapeRobotString(pathToInstallTo)}    ${this.escapeRobotString(fileContentString)}`;
   }
 
   codeFor_pullFile(varNameIgnore, varIndexIgnore, pathToPullFrom) {
-    return `$\{file_base64} =    Pull File    ${this.robotArg(pathToPullFrom)}`;
+    return `$\{file_base64} =    Pull File    ${this.escapeRobotString(pathToPullFrom)}`;
   }
 
   codeFor_pullFolder(varNameIgnore, varIndexIgnore, folderToPullFrom) {
-    return `$\{folder_base64} =    Pull Folder    ${this.robotArg(folderToPullFrom)}`;
+    return `$\{folder_base64} =    Pull Folder    ${this.escapeRobotString(folderToPullFrom)}`;
   }
 
   // Web
 
   codeFor_navigateTo(varNameIgnore, varIndexIgnore, url) {
-    return `Go To Url    ${this.robotArg(url)}`;
+    return `Go To Url    ${this.escapeRobotString(url)}`;
   }
 
   codeFor_getUrl() {
@@ -318,7 +336,7 @@ ${varAssignment}Execute Script    ${this.robotArg(scriptCmd)}    $\{scriptArgume
   }
 
   codeFor_switchToWindow(varNameIgnore, varIndexIgnore, handle) {
-    return `Switch To Window    ${this.robotArg(handle)}`;
+    return `Switch To Window    ${this.escapeRobotString(handle)}`;
   }
 
   codeFor_getWindowHandles() {

@@ -476,6 +476,7 @@ export default class InspectorDriver {
       } else {
         // fallback to default top offset value if element retrieval failed
         try {
+          // mobile:getSystemBars exists since UiA2 2.21 / Espresso 2.23 (Appium 2)
           const systemBars = await this.driver.executeScript('mobile:getSystemBars', []);
           webviewTopOffset = systemBars.statusBar.height;
         } catch {
@@ -498,7 +499,11 @@ export default class InspectorDriver {
           selector: isLandscape ? IOS_SAFARI_LANDSCAPE_TABBAR_SELECTOR : IOS_SAFARI_PORTRAIT_TOPBAR_SELECTOR,
         });
         if (topBar.el) {
-          webviewTopOffset = (await topBar.el.getElementRect()).height;
+          const topBarRect = await topBar.el.getElementRect();
+          // iPhone Duo portrait mode moves this top bar to the right side, in which case no top offset is needed
+          if (topBarRect.width > topBarRect.height) {
+            webviewTopOffset = topBarRect.height;
+          }
         }
         if (isLandscape) {
           // Landscape mode also has side offsets

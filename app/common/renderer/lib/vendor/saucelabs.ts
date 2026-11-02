@@ -1,17 +1,11 @@
 import dayjs, {extend as dayjsExtend} from 'dayjs';
 import localizedFormat from 'dayjs/plugin/localizedFormat.js';
 
-import i18n from '../../i18next.js';
 import {BaseVendor} from './base.js';
 
 dayjsExtend(localizedFormat);
 
 const SAUCE_OPTIONS_CAP = 'sauce:options';
-// The data centers offered in the Sauce Labs server tab. The value becomes part of the
-// hostname, so anything else (e.g. from a crafted session file) must be refused rather than
-// letting it redirect the credentialed request to another host.
-const SAUCE_DATA_CENTERS = ['us-west-1', 'us-east-4', 'eu-central-1'];
-const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]'];
 
 export class SaucelabsVendor extends BaseVendor {
   override async configureProperties(): Promise<void> {
@@ -26,31 +20,17 @@ export class SaucelabsVendor extends BaseVendor {
     ]);
 
     // The ondemand endpoints are HTTPS: the first request carries the credentials as Basic
-    // auth, so it must never go over plaintext. Only the Sauce Connect proxy, a local tunnel,
-    // is spoken to over HTTP.
-    let host: string;
-    let port: number | string;
-    let https: boolean;
+    // auth, so it must never go over plaintext. The data center is checked against the offered
+    // ones when a session file is imported (see sessionfile-parsing.js).
+    const dataCenter = String(sauce.dataCenter ?? '');
+    let host = `ondemand.${dataCenter}.saucelabs.com`;
+    let port: number | string = 443;
+    let https = true;
     if (sauce.useSCProxy) {
       host = (sauce.scHost as string | undefined) || 'localhost';
       port = parseInt(String(sauce.scPort), 10) || 4445;
-      https = false;
-      // The proxy host can come from an imported session file, and the credentials would reach
-      // it unencrypted, so a proxy on another machine needs the user's go-ahead
-      if (
-        !LOCAL_HOSTS.includes(host.toLowerCase()) &&
-        !window.confirm(i18n.t('sauceConnectProxyConfirmation', {host}))
-      ) {
-        throw new Error(`${i18n.t('Sauce Labs credentials were not sent to:')} ${host}`);
-      }
-    } else {
-      const dataCenter = String(sauce.dataCenter ?? '');
-      if (!SAUCE_DATA_CENTERS.includes(dataCenter)) {
-        throw new Error(`${i18n.t('Unsupported Sauce Labs data center:')} ${dataCenter}`);
-      }
-      host = `ondemand.${dataCenter}.saucelabs.com`;
-      port = 443;
-      https = true;
+      // The Sauce Connect proxy is spoken to over HTTP unless the user enables SSL for it
+      https = !!sauce.scSsl;
     }
     const path = '/wd/hub';
     this._saveProperties(sauce, {host, path, port, https, username, accessKey});

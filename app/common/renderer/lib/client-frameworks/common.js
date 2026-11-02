@@ -84,15 +84,13 @@ export default class CommonClientFramework {
     return varName;
   }
 
-  // Render a value as a double-quoted string literal that is valid in Python, JS, Java and C#,
-  // and safe inside a single-line comment in any target language. Values such as locators come
-  // from the app's page source, so they must not be able to end the literal (or the comment)
-  // and inject code. JSON.stringify escapes quotes, backslashes and control characters; the
-  // remaining characters that JS or C# treat as line terminators are escaped here.
+  // Escape a value as a string literal valid in Python, JS, Java and C# (a superset of JSON),
+  // with the line separators JSON.stringify leaves raw also escaped, so a value taken from the
+  // app under test or the server cannot close the literal or start a new line.
   quote(value) {
     return JSON.stringify(String(value)).replace(
       /[\u0085\u2028\u2029]/g,
-      (ch) => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`,
+      (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`,
     );
   }
 

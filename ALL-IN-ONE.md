@@ -437,9 +437,12 @@ cert.
   runs the generated `.py`, `.robot`, `.rb` and `.js` files.
 - **URL state is sanitized** — in the browser/plugin builds, a `?state=` link may
   set capabilities and a local/remote server only, never a cloud vendor's
-  settings (which hold saved credentials); auto-start always asks first.
-- **Sauce Labs** — HTTPS and an allowlisted data center; a Sauce Connect proxy
-  on another machine (plain HTTP) is confirmed before credentials are sent.
+  settings. It replaces the saved server state instead of merging into it, so a
+  link never uses saved cloud credentials, and auto-start needs the link to carry
+  a state.
+- **Sauce Labs** — HTTPS for the ondemand endpoints, and session files with a
+  data center the Sauce tab doesn't offer are refused at import. The Sauce
+  Connect proxy uses plain HTTP unless its SSL checkbox is ticked.
 
 ---
 
