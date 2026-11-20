@@ -6,6 +6,6 @@ export class LocalVendor extends BaseVendor {
 
     const host = local.host === '0.0.0.0' ? 'localhost' : local.hostname;
     const port = local.port as number | string;
-    this._saveProperties(local, {host: host as string, port});
+    this._saveProperties(local, {host: host as string, port, path: local.path as string | undefined});
   }
 }

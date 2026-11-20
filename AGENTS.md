@@ -108,7 +108,8 @@ app/common/renderer/        # React UI
   actions/SessionInspector.js   # redux thunks (applyClientMethod, findAndAssign, scrollToElement, ...)
   hooks/                    # use-*.jsx — one hook per all-in-one feature (see §5)
   components/
-    SessionBuilder/         # the start screen (server config + our Local Server/Drivers/Tests tabs)
+    Workspace/              # desktop start page: left rail Server | Session | Tests + server status
+    SessionBuilder/         # upstream's builder (Session area) + our LocalServerTab/ExtensionsTab/PythonTab panels
     SessionInspector/       # the live session UI (tabs incl. our Raw Command; scroll button)
   lib/client-frameworks/    # per-language code generators (python.js, ruby.js, js-wdio.js, robot.js, ...)
   lib/appium/inspector-driver.js  # wraps the WebDriver session; fetch/click/cache elements
@@ -178,6 +179,30 @@ it, switch preload to `contextBridge.exposeInMainWorld`.)
 
 Notes that bite if you forget them:
 
+- **Start page = `Workspace/Workspace.jsx`** (routed from `index.jsx` for `/` and
+  `/session`). A left rail switches three areas, in workflow order: **Server**
+  (Local Server and Drivers & Plugins side by side), **Session** (upstream's
+  `SessionBuilder.jsx`) and **Tests** (`PythonPanel`). The app still opens on
+  Session. Server and Tests mount the first time they're opened (so the driver
+  list and toolchain probes only run for people who use them), then stay
+  mounted and are only hidden, so switching never resets the builder or a run.
+  The rail's bottom chip shows the managed server's live status
+  (`useAppiumServer({withLog: false})`). Without `window.electronIPC` (browser
+  build) it renders the plain builder. Do not add our panels back into
+  `SessionBuilder.jsx`'s tab row.
+- **"Local server" session target.** Upstream's legacy `SERVER_TYPES.LOCAL`
+  (Appium Desktop's server) now means the app's own server. Desktop-only
+  (`hasBundledServer()` in `lib/bundled-server.js`), so the browser build is
+  unchanged. Its address is set once, in the Server area, and saved under the
+  `BUNDLED_SERVER_ADDRESS` setting (`useBundledServerAddress()` keeps every view
+  in sync); the session tab (`BundledServerTab`) has no address fields. Start
+  Session calls `ensureBundledServer()` in `newSession`, which starts the server
+  when it isn't running and connects to where it actually listens. These are the
+  fork's only edits to upstream session files, each marked `All-in-one`:
+  `actions/SessionBuilder.js` (`newSession`, `setLocalServerParams`,
+  `setSavedServerParams`, which no longer drop `local` on desktop and default new
+  users to it), `SessionBuilder.jsx` (one tab item) and `lib/vendor/local.ts`
+  (passes the base path). Re-apply them if an upstream merge conflicts there.
 - **Inspector tabs live in `SessionInspectorTabs.jsx`** (upstream extracted them
   out of `SessionInspector.jsx`). Add inspector tabs there. Tab keys are in
   `constants/session-inspector.js` (`INSPECTOR_TABS`).
@@ -285,6 +310,9 @@ npm run pack:electron                                # installer (.exe) + zip (u
   The server state is rebuilt from the defaults instead of merged into the saved
   one, so a link never inherits saved cloud credentials, and `?autoStart=1`
   only starts a session when the link also carries a state. No prompt is shown.
+  A link never starts the app's own server: with `serverType: local` it
+  auto-starts a session only if the user already started that server
+  (`initFromQueryString`); only the user's Start Session starts it.
 - **Sauce Labs** ondemand endpoints always use HTTPS. The data center is checked
   against `SAUCE_DATA_CENTERS` (shared with the server tab) when a session file
   is imported (`isSessionServerValid`). The Sauce Connect proxy is plain HTTP
@@ -328,17 +356,20 @@ git diff --name-only --diff-filter=U                     # list conflicts
   bumped deps**, lint, then commit the merge and push. If the build can't be made
   to pass quickly, `git merge --abort` — never leave a broken tree.
 - **Never resolve by discarding our features.** Confirm they survived:
-  grep for `scrollToElement`, `afterPack`, `Local Server`, `Save test as a file`,
-  `RAW_COMMAND` after any merge.
+  grep for `scrollToElement`, `afterPack`, `ensureBundledServer`, `BundledServerTab`,
+  `Save test as a file`, `RAW_COMMAND` after any merge.
 
 ---
 
 ## 9. Known gotchas (each cost real debugging — don't relearn them)
 
-- **`isDev` circular import.** `binary-resolver.js` computes `isDev` locally
-  (`process.env.NODE_ENV === 'development'`) — it must NOT import it from
-  `helpers.js`, which imports the appium modules (that import binary-resolver)
-  before its own `isDev` is initialized → temporal-dead-zone crash at startup.
+- **Bundled resources are keyed on `app.isPackaged`, not `NODE_ENV`.**
+  `binary-resolver.js` reads `process.resourcesPath` only in a packaged app; any
+  unpackaged run (`dev:electron`, `preview:electron`, `electron .`) reads the
+  repo's `resources/`. Keying it on `NODE_ENV` broke `preview:electron`, where
+  `resourcesPath` is Electron's own folder: no bundled server was found and the
+  `.cmd` fallback failed with `spawn EINVAL`. Don't import `isDev` from
+  `helpers.js` into the appium modules either (circular import, TDZ crash).
 - **npm 11 blocks install scripts.** After any `npm install`, esbuild/sharp/
   electron install scripts may be "pending". `electron` needs its script (it
   downloads the binary). Approve with `npm approve-scripts electron` (etc.), or

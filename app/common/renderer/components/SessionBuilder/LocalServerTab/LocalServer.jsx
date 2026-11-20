@@ -1,9 +1,10 @@
-import {IconPlayerPlay, IconPlayerStop} from '@tabler/icons-react';
-import {Alert, Button, Input, Space, Tag, Typography} from 'antd';
+import {Alert, Input, Space, Tag, Typography} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
-import {useAppiumServer} from '../../../hooks/use-appium-server.jsx';
+import {useAppiumServer, useBundledServerAddress} from '../../../hooks/use-appium-server.jsx';
+import {bundledServerUrl} from '../../../lib/bundled-server.js';
+import ServerToggle from './ServerToggle.jsx';
 
 import styles from './LocalServer.module.css';
 
@@ -26,11 +27,19 @@ const isLoopback = (host) => host === '127.0.0.1' || host === 'localhost' || hos
 const LocalServer = () => {
   const {t} = useTranslation();
   const {state, log, start, stop} = useAppiumServer();
+  const [address, setAddress] = useBundledServerAddress();
 
-  const [host, setHost] = useState('127.0.0.1');
-  const [port, setPort] = useState('4723');
-  const [basePath, setBasePath] = useState('/');
+  const [host, setHost] = useState(address.host);
+  const [port, setPort] = useState(String(address.port));
+  const [basePath, setBasePath] = useState(address.basePath);
   const [busy, setBusy] = useState(false);
+
+  // Show the saved address once it loads, and whenever it's saved
+  useEffect(() => {
+    setHost(address.host);
+    setPort(String(address.port));
+    setBasePath(address.basePath);
+  }, [address]);
 
   const logRef = useRef(null);
   useEffect(() => {
@@ -45,7 +54,7 @@ const LocalServer = () => {
         <Alert
           type="info"
           showIcon
-          message={t('Desktop only')}
+          title={t('Desktop only')}
           description="The managed Appium server is only available in the desktop app."
         />
       </div>
@@ -58,7 +67,13 @@ const LocalServer = () => {
   const onStart = async () => {
     setBusy(true);
     try {
-      await start({host, port: Number(port) || 4723, basePath: basePath || '/'});
+      const next = {host, port: Number(port) || 4723, basePath: basePath || '/'};
+      const started = await start(next);
+      // Kept only once the server accepted it (valid, and approved if non-loopback), so the
+      // session builder's "Local server" tab and auto-start never reuse a refused address
+      if (started?.status === 'starting' || started?.status === 'running') {
+        await setAddress(next);
+      }
     } finally {
       setBusy(false);
     }
@@ -76,11 +91,7 @@ const LocalServer = () => {
               source: <b>{state.source}</b>
             </Text>
           )}
-          {status === 'running' && (
-            <Text type="secondary">
-              {`http://${state.host}:${state.port}${state.basePath === '/' ? '' : state.basePath}`}
-            </Text>
-          )}
+          {status === 'running' && <Text type="secondary">{bundledServerUrl(state)}</Text>}
           {state?.error && <Text type="danger">{state.error}</Text>}
         </Space>
 
@@ -100,7 +111,7 @@ const LocalServer = () => {
             className={styles.port}
           />
           <Input
-            addonBefore={t('Base Path')}
+            addonBefore={t('Base path')}
             value={basePath}
             onChange={(e) => setBasePath(e.target.value)}
             disabled={isUp}
@@ -112,32 +123,27 @@ const LocalServer = () => {
           <Alert
             type="warning"
             showIcon
-            message="Non-loopback host"
+            title="Non-loopback host"
             description="The server runs with --allow-cors, which is only safe on a loopback host (127.0.0.1). Binding to a public address exposes a remote-code-execution risk."
           />
         )}
 
-        <Space>
-          <Button
-            type="primary"
-            icon={<IconPlayerPlay size={16} />}
-            onClick={onStart}
-            loading={busy || status === 'starting'}
-            disabled={isUp}
-          >
-            {t('Start Server')}
-          </Button>
-          <Button danger icon={<IconPlayerStop size={16} />} onClick={stop} disabled={!isUp}>
-            {t('Stop Server')}
-          </Button>
-        </Space>
+        <div>
+          <ServerToggle status={status} onStart={onStart} onStop={stop} busy={busy} />
+        </div>
 
         <div>
           <Text type="secondary" className={styles.label}>
-            {t('Server Log')}
+            {t('Server log')}
           </Text>
           <pre className={styles.log} ref={logRef}>
-            {log.length === 0 ? 'Server output will appear here once started.' : log.map((l) => l.chunk).join('')}
+            {log.length > 0
+              ? log.map((l) => l.chunk).join('')
+              : // The log is kept per view: after a session, this view reopens on a server that's
+                // already running, and only output from then on is shown
+                isUp
+                ? t('The server is running. New output will appear here.')
+                : t('Server output will appear here once started.')}
           </pre>
         </div>
       </Space>

@@ -5,9 +5,9 @@ import {Provider} from 'react-redux';
 import {MemoryRouter, Route, Routes} from 'react-router';
 
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary.jsx';
-import SessionBuilderPage from './components/SessionBuilder/SessionBuilder.jsx';
 import SessionInspectorPage from './components/SessionInspector/SessionInspector.jsx';
 import Spinner from './components/Spinner/Spinner.jsx';
+import Workspace from './components/Workspace/Workspace.jsx';
 import {ThemeProvider} from './providers/ThemeProvider.jsx';
 import store from './store.js';
 
@@ -20,8 +20,8 @@ createRoot(container).render(
         <MemoryRouter initialEntries={['/']}>
           <Suspense fallback={<Spinner />}>
             <Routes>
-              <Route path="/" element={<SessionBuilderPage />} />
-              <Route path="/session" element={<SessionBuilderPage />} />
+              <Route path="/" element={<Workspace />} />
+              <Route path="/session" element={<Workspace />} />
               <Route path="/inspector" element={<SessionInspectorPage />} />
             </Routes>
           </Suspense>
