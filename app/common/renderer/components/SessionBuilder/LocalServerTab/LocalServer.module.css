@@ -36,7 +36,8 @@
   padding: 12px;
   white-space: pre-wrap;
   word-break: break-word;
-  height: 260px;
+  /* Fill the Server area's column; the log is what's read most while a server runs */
+  height: max(260px, calc(100vh - 240px));
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;

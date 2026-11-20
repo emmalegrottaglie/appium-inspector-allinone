@@ -41,7 +41,8 @@ let server = null; // {runId, sender, status, source, host, port, basePath, plug
 let pollTimer = null;
 // Set from the first check in start() until the server record exists, so a second start that
 // arrives while this one waits (dialog, binary resolution) returns instead of spawning again.
-let startPending = false;
+// The start in progress (validation, the non-loopback prompt, launch), shared by every caller
+let pendingStart = null;
 
 /** Register the server's IPC channels. Call from setupIPCListeners(). */
 export function setupAppiumIPC() {
@@ -94,7 +95,18 @@ function pingStatus(cfg) {
 }
 
 async function assembleLaunch(cfg) {
-  const serverArgs = ['server', '--address', cfg.host, '--port', String(cfg.port), '--base-path', cfg.basePath];
+  // --log-no-colors: the log is shown as plain text in the app, where ANSI colour codes would
+  // appear as escape sequences
+  const serverArgs = [
+    'server',
+    '--address',
+    cfg.host,
+    '--port',
+    String(cfg.port),
+    '--base-path',
+    cfg.basePath,
+    '--log-no-colors',
+  ];
   if (cfg.allowCors) {
     serverArgs.push('--allow-cors');
   }
@@ -157,16 +169,19 @@ function onServerExit({code, error}) {
   server = null;
 }
 
-async function start(sender, userCfg = {}) {
-  if (startPending || (server && (server.status === 'starting' || server.status === 'running'))) {
-    return publicState();
+function start(sender, userCfg = {}) {
+  // A second start while one is being set up (e.g. the user is still answering the non-loopback
+  // prompt) gets that start's outcome, not a 'stopped' state that reads as a refusal
+  if (pendingStart) {
+    return pendingStart;
   }
-  startPending = true;
-  try {
-    return await launchServer(sender, userCfg);
-  } finally {
-    startPending = false;
+  if (server && (server.status === 'starting' || server.status === 'running')) {
+    return Promise.resolve(publicState());
   }
+  pendingStart = launchServer(sender, userCfg).finally(() => {
+    pendingStart = null;
+  });
+  return pendingStart;
 }
 
 async function launchServer(sender, userCfg) {

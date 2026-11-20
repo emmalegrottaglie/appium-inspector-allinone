@@ -75,6 +75,37 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
 
 ### Changed
 
+- **New start page layout.** The all-in-one tools no longer share the session
+  builder's tab row, where they inherited its server bar and Start Session footer.
+  A left rail now switches, in workflow order, between **Server** (Local Server
+  and Drivers & Plugins side by side, the log and driver list filling the window),
+  **Session** (upstream's builder, unchanged) and **Tests**. A chip at the bottom of the rail shows
+  the managed server's status and port on every page.
+- **"Local server" session target.** The session builder's server tabs start
+  with **Local server**, the app's own server. Start Session starts it when it
+  isn't running and connects to the address it listens on, so recording no longer
+  needs a trip to the Server area first. Its address is set once, in the Server
+  area, and saved across launches; the tab shows it read-only with a link to
+  change it. New desktop users start on this tab.
+- **One Start/Stop server button** replaces the separate Start and Stop buttons.
+- **Drivers & Plugins is a catalog:** Installed and Available lists, each entry
+  with a one-line summary, one-click Install, "Update to x" (major updates
+  marked), and Uninstall behind a confirmation. Installing from npm or GitHub moved
+  behind "Install another driver from npm or GitHub…". Refused requests (an
+  invalid name, an operation already running) now show in the output pane instead
+  of failing silently.
+- **Environment is a table:** one row per toolchain (Python, test environment,
+  Robot Framework, Ruby, Node) with version, status and the one action that
+  applies. Only a needed action is primary, so "Reinstall" no longer competes for
+  attention, and the tab is marked only when setup is needed.
+- **Tests:** with no folder open, the page shows one "Open test folder" action
+  instead of empty run controls. The pytest `-k` field is labelled "Filter by
+  name", and a disabled Run button says why.
+- **Recorder:** the empty Recorder tab has its own **Start recording** button.
+- **Raw Command** starts from a read-only `GET /session/{sessionId}/window/rect`
+  instead of a `POST` that navigated the device.
+- The managed server logs without ANSI colour codes (`--log-no-colors`).
+
 - `helpers.js` now registers five constrained IPC groups (`process`, `appium`,
   `extensions`, `python` env + tests) inside `setupIPCListeners()`.
 - `preload.mjs` exposes new `runner`, `appium`, `extensions`, `pythonEnv`, and
@@ -91,6 +122,13 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
   refactored `SessionInspectorTabs.jsx`, `RecorderTabCard.jsx` and `Recorder.jsx`.
 
 ### Fixed
+
+- **Drivers & Plugins and the Local Server failed outside a packaged build.**
+  `npm run preview:electron` and `electron .` looked for the bundled server in
+  Electron's own resources folder, found none, and the system fallback failed with
+  `spawn EINVAL`. The resources root is now keyed on `app.isPackaged`. The driver
+  list also showed that error as "No extensions found"; it now shows the error
+  with a Retry button, and lists installed drivers before checking for updates.
 
 - **The bundled server failed on a cold start.** Readiness had a fixed 30 s
   limit, but the first start after a reboot (empty file cache, antivirus

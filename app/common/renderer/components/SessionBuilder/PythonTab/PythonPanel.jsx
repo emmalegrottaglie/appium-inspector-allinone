@@ -7,7 +7,7 @@ import {
   IconRefresh,
   IconWand,
 } from '@tabler/icons-react';
-import {Alert, Button, Dropdown, Input, List, Space, Tabs, Tag, Typography} from 'antd';
+import {Alert, Badge, Button, Dropdown, Empty, Input, List, Space, Table, Tabs, Tag, Typography} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
 
@@ -118,38 +118,6 @@ function scaffoldTest(raw, {funcName = 'test_recorded', implicitWait = false} = 
   ].join('\n');
 }
 
-const EnvStatus = ({status}) => {
-  const {t} = useTranslation();
-  if (!status) {
-    return <Text type="secondary">{t('Checking environment…')}</Text>;
-  }
-  const {python, venv, required, ready} = status;
-  return (
-    <Space direction="vertical" size={4} className={styles.fill}>
-      <Space wrap>
-        <Tag color={ready ? 'success' : 'default'}>{ready ? 'READY' : 'NOT READY'}</Tag>
-        {python?.found ? (
-          <Text type="secondary">
-            Python <b>{python.version}</b> ({python.source})
-            {!python.meetsMinimum && <Text type="danger"> &lt; {python.minimum} required</Text>}
-          </Text>
-        ) : (
-          <Text type="danger">No Python interpreter found on PATH</Text>
-        )}
-        <Tag color={venv ? 'success' : 'default'}>{venv ? 'venv ✓' : 'no venv'}</Tag>
-      </Space>
-      <Space wrap size={4}>
-        {(required || []).map((r) => (
-          <Tag key={r.name} color={r.installed ? 'success' : 'default'}>
-            {r.name}
-            {r.installed && r.version ? ` ${r.version}` : ''}
-          </Tag>
-        ))}
-      </Space>
-    </Space>
-  );
-};
-
 /** Python environment setup + pytest runner. Desktop-only. */
 const PythonPanel = () => {
   const {t} = useTranslation();
@@ -243,7 +211,7 @@ const PythonPanel = () => {
         <Alert
           type="info"
           showIcon
-          message={t('Desktop only')}
+          title={t('Desktop only')}
           description="The Python test runner is only available in the desktop app."
         />
       </div>
@@ -302,144 +270,226 @@ const PythonPanel = () => {
     }
   }
 
+  // One row per toolchain: what it is, what's installed, whether it's usable, and the one action
+  // that fixes it. Only an action that's needed is primary, so a ready environment stays quiet.
+  const python = status?.python;
+  const statusCell = (kind, label) => <Badge status={kind} text={label} />;
+  const envRows = [
+    {
+      key: 'python',
+      name: 'Python',
+      detail: t('Your system interpreter, used to create the test environment'),
+      version: python?.found ? `${python.version} (${python.source})` : '—',
+      status: !status
+        ? statusCell('processing', t('Checking…'))
+        : !python?.found
+          ? statusCell('warning', t('Not found on PATH'))
+          : !python.meetsMinimum
+            ? statusCell('error', t('Needs {{version}} or later', {version: python.minimum}))
+            : statusCell('success', t('Ready')),
+      action: null,
+    },
+    {
+      key: 'venv',
+      name: t('Test environment'),
+      detail: t('pytest and the Appium Python client, in a virtual environment the app manages'),
+      version:
+        (status?.required || [])
+          .filter((r) => r.installed && r.version)
+          .map((r) => `${r.name} ${r.version}`)
+          .join(' · ') || '—',
+      status: ready
+        ? statusCell('success', t('Ready'))
+        : status?.venv
+          ? statusCell('warning', t('Missing packages'))
+          : statusCell('default', t('Not set up')),
+      action: (
+        <Button
+          size="small"
+          type={ready ? 'default' : 'primary'}
+          onClick={setup}
+          loading={settingUp}
+          disabled={!python?.found}
+        >
+          {ready ? t('Reinstall') : t('Set up')}
+        </Button>
+      ),
+    },
+    {
+      key: 'robot',
+      name: 'Robot Framework',
+      detail: t('Runs .robot files in the test environment'),
+      version: '—',
+      status: status?.robotReady ? statusCell('success', t('Ready')) : statusCell('default', t('Not installed')),
+      action: !status?.robotReady && (
+        <Button
+          size="small"
+          onClick={installRobot}
+          loading={settingUp}
+          disabled={!status?.venv}
+          title={status?.venv ? undefined : t('Set up the test environment first')}
+        >
+          {t('Install')}
+        </Button>
+      ),
+    },
+    {
+      key: 'ruby',
+      name: 'Ruby',
+      detail: t('Runs .rb files with your system Ruby'),
+      version: runtimes?.ruby?.found ? runtimes.ruby.version : '—',
+      status: runtimes?.ruby?.found ? statusCell('success', t('Found')) : statusCell('default', t('Not found on PATH')),
+      action: runtimes?.ruby?.found && (
+        <Button size="small" onClick={installRubyGems} loading={rtBusy && rtOp?.kind === 'ruby'}>
+          {t('Install appium_lib_core')}
+        </Button>
+      ),
+    },
+    {
+      key: 'js',
+      name: 'Node / WebdriverIO',
+      detail: runtimes?.oxygen?.found
+        ? t('Runs .js files with your system Node (oxygen CLI found)')
+        : t('Runs .js files with your system Node'),
+      version: runtimes?.node?.found ? runtimes.node.version : '—',
+      status: runtimes?.node?.found ? statusCell('success', t('Found')) : statusCell('default', t('Not found on PATH')),
+      action: runtimes?.node?.found && (
+        <Button
+          size="small"
+          onClick={() => installJsDeps(workingDir)}
+          loading={rtBusy && rtOp?.kind === 'js'}
+          disabled={!workingDir}
+          title={workingDir ? undefined : t('Open a test folder first')}
+        >
+          {t('Install WebdriverIO')}
+        </Button>
+      ),
+    },
+  ];
+
   const environmentPane = (
     <Space direction="vertical" size="middle" className={styles.fill}>
-      <section className={styles.card}>
-        <Space className={styles.cardHeader}>
-          <Text strong>{t('Environment')}</Text>
-          <Button size="small" icon={<IconRefresh size={14} />} onClick={refresh} disabled={settingUp} />
-        </Space>
-        <EnvStatus status={status} />
-        <Space className={styles.actions}>
-          <Button
-            type="primary"
-            onClick={setup}
-            loading={settingUp}
-            disabled={status != null && status.python && !status.python.found}
-          >
-            {ready ? t('Reinstall dependencies') : t('Set up environment')}
-          </Button>
-          {phase === 'done' && <Text type="success">{t('Setup complete')}</Text>}
-          {phase === 'error' && <Text type="danger">{t('Setup failed — see log')}</Text>}
-        </Space>
-        {(settingUp || log.length > 0) && (
-          <pre className={styles.log} ref={envLogRef}>
-            {log.map((l) => l.chunk).join('')}
-          </pre>
-        )}
-      </section>
-
-      <section className={styles.card}>
-        <Space className={styles.cardHeader}>
-          <Text strong>{t('Languages & runtimes')}</Text>
-        </Space>
-        <Text type="secondary" className={styles.hint}>
+      <Space className={styles.cardHeader}>
+        <Text type="secondary">
           {t(
-            'Python and Robot run in the managed venv. Ruby and JavaScript use your system toolchains (must be installed).',
+            'Python and Robot run in the app’s test environment. Ruby and JavaScript use the toolchains on your PATH.',
           )}
         </Text>
-
-        <Space wrap>
-          <Tag color={status?.robotReady ? 'success' : 'default'}>Robot Framework</Tag>
-          {status?.robotReady ? (
-            <Text type="success">{t('ready')} (.robot)</Text>
-          ) : (
-            <Button size="small" onClick={installRobot} loading={settingUp} disabled={!status?.venv}>
-              {t('Add Robot Framework')}
-            </Button>
-          )}
-          {!status?.venv && <Text type="secondary">{t('set up the venv first')}</Text>}
-        </Space>
-
-        <Space wrap>
-          <Tag color={runtimes?.ruby?.found ? 'success' : 'default'}>Ruby</Tag>
-          <Text type="secondary">{runtimes?.ruby?.found ? runtimes.ruby.version : t('not found on PATH')}</Text>
-          <Button
-            size="small"
-            onClick={installRubyGems}
-            loading={rtBusy && rtOp?.kind === 'ruby'}
-            disabled={!runtimes?.ruby?.found}
-          >
-            {t('Install appium_lib_core')}
-          </Button>
-        </Space>
-
-        <Space wrap>
-          <Tag color={runtimes?.node?.found ? 'success' : 'default'}>Node / WebdriverIO</Tag>
-          <Text type="secondary">{runtimes?.node?.found ? runtimes.node.version : t('Node not found on PATH')}</Text>
-          <Button
-            size="small"
-            onClick={() => installJsDeps(workingDir)}
-            loading={rtBusy && rtOp?.kind === 'js'}
-            disabled={!runtimes?.node?.found || !workingDir}
-          >
-            {t('Install WebdriverIO')}
-          </Button>
-          {runtimes?.oxygen?.found && <Tag color="success">oxygen CLI</Tag>}
-          {!workingDir && <Text type="secondary">{t('choose a working dir first')}</Text>}
-        </Space>
-
-        {(rtBusy || rtLog.length > 0) && (
-          <pre className={styles.log} ref={rtLogRef}>
-            {rtLog.map((l) => l.chunk).join('')}
-          </pre>
-        )}
-      </section>
+        <Button
+          size="small"
+          icon={<IconRefresh size={14} />}
+          onClick={refresh}
+          disabled={settingUp}
+          title={t('Check again')}
+          aria-label={t('Check again')}
+        />
+      </Space>
+      <Table
+        size="small"
+        pagination={false}
+        dataSource={envRows}
+        className={styles.envTable}
+        columns={[
+          {
+            title: t('Toolchain'),
+            key: 'name',
+            render: (_, row) => (
+              <Space direction="vertical" size={0}>
+                <Text strong>{row.name}</Text>
+                <Text type="secondary" className={styles.hint}>
+                  {row.detail}
+                </Text>
+              </Space>
+            ),
+          },
+          {title: t('Version'), dataIndex: 'version', key: 'version'},
+          {title: t('Status'), dataIndex: 'status', key: 'status', width: 170},
+          {title: '', dataIndex: 'action', key: 'action', align: 'right', width: 190},
+        ]}
+      />
+      {phase === 'done' && <Text type="success">{t('Setup complete')}</Text>}
+      {phase === 'error' && <Text type="danger">{t('Setup failed — see the output below')}</Text>}
+      {(settingUp || log.length > 0) && (
+        <pre className={styles.log} ref={envLogRef}>
+          {log.map((l) => l.chunk).join('')}
+        </pre>
+      )}
+      {(rtBusy || rtLog.length > 0) && (
+        <pre className={styles.log} ref={rtLogRef}>
+          {rtLog.map((l) => l.chunk).join('')}
+        </pre>
+      )}
     </Space>
   );
 
-  const testsPane = (
+  // Until a folder is open there is nothing to list, edit or run, so show only the way in
+  const testsPane = !workingDir ? (
+    <Empty
+      className={styles.noFolder}
+      image={Empty.PRESENTED_IMAGE_SIMPLE}
+      description={
+        <Space direction="vertical" size={2}>
+          <Text strong>{t('No test folder open')}</Text>
+          <Text type="secondary">
+            {t('Open the folder that holds your tests, or an empty one to start writing them.')}
+          </Text>
+        </Space>
+      }
+    >
+      <Button type="primary" icon={<IconFolderOpen size={16} />} onClick={pickDir}>
+        {t('Open test folder')}
+      </Button>
+    </Empty>
+  ) : (
     <div className={styles.testsLayout}>
       {/* LEFT column: working dir + file list + editor */}
       <div className={styles.testsCol}>
         <Space wrap>
           <Button icon={<IconFolderOpen size={16} />} onClick={pickDir}>
-            {t('Choose working directory')}
+            {t('Change folder')}
           </Button>
-          {workingDir && <Button size="small" icon={<IconRefresh size={14} />} onClick={refreshFiles} />}
+          <Button
+            size="small"
+            icon={<IconRefresh size={14} />}
+            onClick={refreshFiles}
+            title={t('Refresh file list')}
+            aria-label={t('Refresh file list')}
+          />
         </Space>
-        {workingDir ? (
-          <Text type="secondary" className={styles.dir}>
-            {workingDir}
-          </Text>
-        ) : (
-          <Text type="secondary">{t('Choose a working directory to see and run your tests.')}</Text>
-        )}
-        {workingDir && (
-          <>
-            <List
-              size="small"
-              header={
-                <Text type="secondary">
-                  {files.length} {t('test file(s)')}
-                </Text>
-              }
-              className={styles.files}
-              dataSource={files}
-              locale={{emptyText: t('No test files found (.py, .robot, .rb, .js)')}}
-              renderItem={(f) => (
-                <List.Item
-                  className={`${styles.fileItem} ${openFile === f ? styles.fileActive : ''}`}
-                  onClick={() => openInEditor(f)}
-                >
-                  {f}
-                </List.Item>
-              )}
-            />
-            <Space.Compact className={styles.row}>
-              <Input
-                placeholder={t('new-test-name.py')}
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                onPressEnter={startNewFile}
-                spellCheck={false}
-              />
-              <Button icon={<IconFilePlus size={16} />} onClick={startNewFile}>
-                {t('New test')}
-              </Button>
-            </Space.Compact>
-          </>
-        )}
+        <Text type="secondary" className={styles.dir}>
+          {workingDir}
+        </Text>
+        <List
+          size="small"
+          header={
+            <Text type="secondary">
+              {files.length} {t('test file(s)')}
+            </Text>
+          }
+          className={styles.files}
+          dataSource={files}
+          locale={{emptyText: t('No test files found (.py, .robot, .rb, .js)')}}
+          renderItem={(f) => (
+            <List.Item
+              className={`${styles.fileItem} ${openFile === f ? styles.fileActive : ''}`}
+              onClick={() => openInEditor(f)}
+            >
+              {f}
+            </List.Item>
+          )}
+        />
+        <Space.Compact className={styles.row}>
+          <Input
+            placeholder={t('new-test-name.py')}
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onPressEnter={startNewFile}
+            spellCheck={false}
+          />
+          <Button icon={<IconFilePlus size={16} />} onClick={startNewFile}>
+            {t('New test')}
+          </Button>
+        </Space.Compact>
 
         {openFile && (
           <div className={styles.editor}>
@@ -513,11 +563,11 @@ const PythonPanel = () => {
       <div className={styles.testsCol}>
         <Space.Compact className={styles.row}>
           <Input
-            addonBefore={t('Keyword (-k)')}
-            placeholder={t('optional pytest -k filter')}
+            addonBefore={t('Filter by name')}
+            placeholder={t('pytest -k expression, e.g. login and not slow')}
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            disabled={!workingDir || running}
+            disabled={running}
             spellCheck={false}
           />
           <Button
@@ -525,12 +575,13 @@ const PythonPanel = () => {
             icon={<IconPlayerPlay size={16} />}
             onClick={() => runTests({keyword: keyword.trim() || null})}
             loading={running}
-            disabled={!ready || !workingDir}
+            disabled={!ready}
+            title={ready ? undefined : t('Set up the environment before running tests.')}
           >
             {t('Run all tests')}
           </Button>
         </Space.Compact>
-        {!ready && workingDir && <Text type="warning">{t('Set up the environment before running tests.')}</Text>}
+        {!ready && <Text type="warning">{t('Set up the environment before running tests.')}</Text>}
 
         <Space wrap align="center" className={styles.resultRow}>
           <Text strong>{t('Result')}</Text>
@@ -580,10 +631,12 @@ const PythonPanel = () => {
             key: 'environment',
             label: (
               <span>
-                {t('Environment')}{' '}
-                <Tag color={ready ? 'success' : 'default'} className={styles.tabTag}>
-                  {ready ? t('ready') : t('setup')}
-                </Tag>
+                {t('Environment')}
+                {status && !ready && (
+                  <Tag color="warning" className={styles.tabTag}>
+                    {t('needs setup')}
+                  </Tag>
+                )}
               </span>
             ),
             children: environmentPane,

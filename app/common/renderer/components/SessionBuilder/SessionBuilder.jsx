@@ -15,15 +15,14 @@ import {
   SESSION_BUILDER_NARROW_LAYOUT_BREAKPOINT,
   SESSION_BUILDER_TABS,
 } from '../../constants/session-builder.js';
+import {hasBundledServer} from '../../lib/bundled-server.js';
 import {openLink} from '../../polyfills.js';
 import {isEmpty} from '../../utils/common.js';
 import {log} from '../../utils/logger.js';
 import AppSettings from './AppSettings/AppSettings.jsx';
 import AttachToSession from './AttachToSessionTab/AttachToSession.jsx';
+import BundledServerTab from './BundledServerTab/BundledServerTab.jsx';
 import CapabilityEditor from './CapabilityBuilderTab/CapabilityEditor.jsx';
-import Extensions from './ExtensionsTab/Extensions.jsx';
-import LocalServer from './LocalServerTab/LocalServer.jsx';
-import PythonPanel from './PythonTab/PythonPanel.jsx';
 import SavedCapabilitySets from './SavedCapabilitySetsTab/SavedCapabilitySets.jsx';
 import AdvancedServerParams from './ServerDetails/AdvancedServerParams.jsx';
 import CloudProviders from './ServerDetails/CloudProviders.jsx';
@@ -146,6 +145,10 @@ const Session = () => {
           onChange={(tab) => handleSelectServerTab(tab)}
           styles={{root: {paddingBottom: '8px'}, header: {margin: '0px 0px 1em 6px'}, item: {padding: '10px 0px'}}}
           items={[
+            // All-in-one: the desktop app's own server, started on demand by Start Session
+            ...(hasBundledServer()
+              ? [{label: t('Local server'), key: SERVER_TYPES.LOCAL, children: <BundledServerTab />}]
+              : []),
             {
               label: t('Appium Server'),
               key: SERVER_TYPES.REMOTE,
@@ -202,29 +205,6 @@ const Session = () => {
               className: styles.scrollingTab,
               children: <AttachToSession loadNewSession={loadNewSession} {...props} />,
             },
-            // All-in-one panels — desktop app only (need window.electronIPC).
-            ...(window.electronIPC
-              ? [
-                  {
-                    label: t('Local Server'),
-                    key: SESSION_BUILDER_TABS.LOCAL_SERVER,
-                    className: styles.scrollingTab,
-                    children: <LocalServer />,
-                  },
-                  {
-                    label: t('Drivers & Plugins'),
-                    key: SESSION_BUILDER_TABS.EXTENSIONS,
-                    className: styles.scrollingTab,
-                    children: <Extensions />,
-                  },
-                  {
-                    label: t('Tests'),
-                    key: SESSION_BUILDER_TABS.PYTHON_TESTS,
-                    className: styles.scrollingTab,
-                    children: <PythonPanel />,
-                  },
-                ]
-              : []),
           ]}
         />
         <Divider />

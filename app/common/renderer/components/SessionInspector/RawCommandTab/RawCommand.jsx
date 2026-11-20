@@ -72,10 +72,11 @@ const RawCommand = (props) => {
   const sessionId = props?.driver?.sessionId || '';
   const initialBase = useMemo(() => deriveBaseUrl(props?.serverDetails), [props?.serverDetails]);
 
-  const [method, setMethod] = useState('POST');
+  // Start from a read-only request, so sending the default can't change anything on the device
+  const [method, setMethod] = useState('GET');
   const [baseUrl, setBaseUrl] = useState(initialBase);
-  const [path, setPath] = useState('/session/{sessionId}/url');
-  const [body, setBody] = useState('{\n  "url": "https://appium.io"\n}');
+  const [path, setPath] = useState('/session/{sessionId}/window/rect');
+  const [body, setBody] = useState('{}');
   const [bodyError, setBodyError] = useState(null);
   const [sending, setSending] = useState(false);
   const [response, setResponse] = useState(null);
@@ -133,7 +134,7 @@ const RawCommand = (props) => {
           <Input
             value={path}
             onChange={(e) => setPath(e.target.value)}
-            placeholder="/session/{sessionId}/url"
+            placeholder="/session/{sessionId}/window/rect"
             spellCheck={false}
           />
           <Button type="primary" icon={<IconSend size={16} />} loading={sending} onClick={send}>
@@ -165,7 +166,7 @@ const RawCommand = (props) => {
               spellCheck={false}
               className={styles.mono}
             />
-            {bodyError && <Alert type="error" message={bodyError} showIcon className={styles.bodyError} />}
+            {bodyError && <Alert type="error" title={bodyError} showIcon className={styles.bodyError} />}
           </div>
         )}
 
@@ -183,7 +184,7 @@ const RawCommand = (props) => {
                 <Alert
                   type="error"
                   showIcon
-                  message="Request failed"
+                  title="Request failed"
                   description={`${response.error}. Check that the server URL is correct and the Appium server is running.`}
                 />
               ) : (
