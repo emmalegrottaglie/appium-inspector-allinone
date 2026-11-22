@@ -69,6 +69,15 @@ describe('electron/main/appium-server.js readiness', function () {
     vi.useRealTimers();
   });
 
+  it('should give a second start made while the first is pending that start, not a stopped state', async function () {
+    const [first, second] = await Promise.all([
+      handlers['appium:start']({sender}, {}),
+      handlers['appium:start']({sender}, {}),
+    ]);
+    expect(first.status).toBe('starting');
+    expect(second).toEqual(first);
+  });
+
   it('should keep waiting for a slow start that keeps printing', async function () {
     await handlers['appium:start']({sender}, {});
     for (let elapsed = 0; elapsed < 120_000; elapsed += 15_000) {

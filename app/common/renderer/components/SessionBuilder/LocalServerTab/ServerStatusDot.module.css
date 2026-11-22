@@ -1,0 +1,20 @@
+.dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ant-color-text-quaternary);
+}
+
+.running {
+  background: var(--ant-color-success);
+}
+
+.starting,
+.stopping {
+  background: var(--ant-color-warning);
+}
+
+.error {
+  background: var(--ant-color-error);
+}

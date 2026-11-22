@@ -4,10 +4,6 @@ import {join} from 'node:path';
 import {app} from 'electron';
 import settings from 'electron-settings';
 
-// Local copy to avoid a circular import with helpers.js (which imports the
-// appium modules that pull this in, before its own `isDev` is initialized).
-const isDev = process.env.NODE_ENV === 'development';
-
 // The ONLY place that knows where an external tool lives, and how it must be
 // launched. Resolution order for any tool:
 //
@@ -17,9 +13,12 @@ const isDev = process.env.NODE_ENV === 'development';
 //
 // In a packaged build, electron-builder copies whatever you list under
 // `extraResources` in electron-builder.json into `process.resourcesPath`,
-// UNPACKED (outside the asar archive) so it can actually be executed.
+// UNPACKED (outside the asar archive) so it can actually be executed. Any unpackaged run
+// (`npm run dev:electron`, `npm run preview:electron`, `electron .`) reads the repo's own
+// resources/ folder instead: process.resourcesPath is then Electron's, with no server in it.
+// This is keyed on app.isPackaged, not NODE_ENV, since a preview build is not development.
 
-export const RESOURCES_ROOT = isDev ? join(app.getAppPath(), 'resources') : process.resourcesPath;
+export const RESOURCES_ROOT = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
 
 const isWin = process.platform === 'win32';
 

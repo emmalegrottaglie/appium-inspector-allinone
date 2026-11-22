@@ -1,5 +1,11 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 
+import {
+  DEFAULT_BUNDLED_SERVER_ADDRESS,
+  getBundledServerAddress,
+  saveBundledServerAddress,
+} from '../lib/bundled-server.js';
+
 // Renderer-side counterpart to appium-server.js. Exposes the managed server's
 // status + streamed log and the start/stop controls. The log rides the same
 // 'process:output' channel as every other process (Step 0); we just filter to
@@ -8,7 +14,11 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 const appium = window.electronIPC?.appium;
 const runner = window.electronIPC?.runner;
 
-export function useAppiumServer() {
+/**
+ * @param {{withLog?: boolean}} [options] withLog: false for status-only consumers (e.g. the
+ * workspace status chip), which then don't keep a second copy of the server log
+ */
+export function useAppiumServer({withLog = true} = {}) {
   const [state, setState] = useState({status: 'stopped'});
   const [log, setLog] = useState(/** @type {{stream: string, chunk: string}[]} */ ([]));
   const runIdRef = useRef(null);
@@ -30,7 +40,7 @@ export function useAppiumServer() {
       runIdRef.current = s.runId ?? runIdRef.current;
     });
 
-    const offLog = runner?.onOutput((data) => {
+    const offLog = (withLog ? runner : null)?.onOutput((data) => {
       if (data.runId && data.runId === runIdRef.current) {
         setLog((prev) => [...prev, {stream: data.stream, chunk: data.chunk}]);
       }
@@ -40,7 +50,7 @@ export function useAppiumServer() {
       offStatus?.();
       offLog?.();
     };
-  }, []);
+  }, [withLog]);
 
   /**
    * Start the server. Clears the log and returns the initial state.
@@ -62,4 +72,33 @@ export function useAppiumServer() {
   const stop = useCallback(() => appium?.stop(), []);
 
   return {state, log, start, stop};
+}
+
+// Every mounted useBundledServerAddress() hears about a saved address, so the Server area's
+// fields and the session builder's "Local server" tab never disagree
+const addressListeners = new Set();
+
+/**
+ * The address the bundled server starts on, saved across launches.
+ * @returns {[{host: string, port: number, basePath: string}, (address: object) => Promise<void>]}
+ */
+export function useBundledServerAddress() {
+  const [address, setAddress] = useState(DEFAULT_BUNDLED_SERVER_ADDRESS);
+
+  useEffect(() => {
+    let live = true;
+    getBundledServerAddress().then((saved) => live && setAddress(saved));
+    addressListeners.add(setAddress);
+    return () => {
+      live = false;
+      addressListeners.delete(setAddress);
+    };
+  }, []);
+
+  const saveAddress = useCallback(async (next) => {
+    await saveBundledServerAddress(next);
+    addressListeners.forEach((listener) => listener(next));
+  }, []);
+
+  return [address, saveAddress];
 }

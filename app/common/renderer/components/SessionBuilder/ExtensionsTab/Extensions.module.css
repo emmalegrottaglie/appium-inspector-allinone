@@ -17,11 +17,36 @@
   flex: 1 1 auto;
 }
 
+/* Installed and Available each read as one framed list; the panel scrolls, not the lists */
 .list {
-  max-height: 320px;
-  overflow: auto;
-  border: 1px solid var(--ant-color-border, rgba(0, 0, 0, 0.1));
-  border-radius: 6px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+}
+
+/* Line the section title up with the item names below it */
+.list :global(.ant-list-header) {
+  padding: 6px 16px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sourceLink {
+  align-self: flex-start;
+  padding-inline: 0;
+}
+
+.hint {
+  font-size: 12px;
 }
 
 .label {

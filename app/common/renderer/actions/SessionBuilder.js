@@ -17,6 +17,12 @@ import {APP_MODE} from '../constants/session-inspector.js';
 import {DEFAULT_SERVER_PROPS} from '../constants/webdriver.js';
 import i18n from '../i18next.js';
 import WDSessionStarter from '../lib/appium/session-starter.js';
+import {
+  bundledServerConnection,
+  ensureBundledServer,
+  hasBundledServer,
+  isBundledServerRunning,
+} from '../lib/bundled-server.js';
 import {VENDOR_MAP} from '../lib/vendor/map.js';
 import {getSetting, loadSessionFileIfOpened, setSetting} from '../polyfills.js';
 import {fetchSessionInformation, formatSeleniumGridSessions} from '../utils/attaching-to-session.js';
@@ -250,8 +256,22 @@ export function newSession(originalCaps, attachSessId = null) {
     let sessionCaps = prefixedCaps ? getCapsObject(prefixedCaps) : {};
     sessionCaps = addCustomCaps(sessionCaps);
 
+    // All-in-one: the "local" server type is the desktop app's own server. Start it if it isn't
+    // running, and connect to wherever it actually listens.
+    let {server} = session;
+    if (session.serverType === SERVER_TYPES.LOCAL && hasBundledServer()) {
+      dispatch({type: NEW_SESSION_LOADING});
+      try {
+        server = {...server, [SERVER_TYPES.LOCAL]: {...server[SERVER_TYPES.LOCAL], ...(await ensureBundledServer())}};
+      } catch (e) {
+        dispatch({type: NEW_SESSION_DONE});
+        showError(e, {secs: 0});
+        return false;
+      }
+    }
+
     const vendorProperties = await retrieveVendorProperties({
-      server: session.server,
+      server,
       serverType: session.serverType,
       sessionCaps,
     });
@@ -546,6 +566,11 @@ export function setServerParam(name, value, serverType) {
  */
 export function setLocalServerParams() {
   return async (dispatch, getState) => {
+    // All-in-one: the desktop app's "local" server is its own bundled server, whose address is
+    // read when a session starts (see newSession), not the old Appium Desktop SERVER_ARGS
+    if (hasBundledServer()) {
+      return;
+    }
     let serverArgs = await getSetting(SERVER_ARGS);
     // Get saved server args from settings and set local server settings to it. If there are no saved args, set local
     // host and port to undefined
@@ -593,10 +618,20 @@ export function setSavedServerParams() {
     let serverType = await getSetting(SESSION_SERVER_TYPE);
     let currentProviders = getState().builder.visibleProviders;
 
+    // All-in-one: the desktop app starts new users on its bundled server
+    if (!serverType && hasBundledServer()) {
+      dispatch({type: CHANGE_SERVER_TYPE, serverType: SERVER_TYPES.LOCAL});
+    }
+
     if (server) {
       // if we have a cloud provider as a saved server, but for some reason the
       // cloud provider is no longer in the list, revert server type to remote
-      if (Object.values(SERVER_TYPES).includes(serverType) && !currentProviders.includes(serverType)) {
+      // (the bundled server is not a cloud provider, so it's kept)
+      if (
+        Object.values(SERVER_TYPES).includes(serverType) &&
+        !currentProviders.includes(serverType) &&
+        !(serverType === SERVER_TYPES.LOCAL && hasBundledServer())
+      ) {
         serverType = SERVER_TYPES.REMOTE;
       }
       dispatch({type: SET_SERVER, server, serverType});
@@ -703,7 +738,12 @@ export function getRunningSessions() {
   return async (dispatch, getState) => {
     const avoidServerTypes = ['sauce'];
     const state = getState().builder;
-    const {server, serverType} = state;
+    const {serverType} = state;
+    let {server} = state;
+    // All-in-one: list the sessions of the app's own server where it is, without starting it
+    if (serverType === SERVER_TYPES.LOCAL && hasBundledServer()) {
+      server = {...server, [SERVER_TYPES.LOCAL]: {...server[SERVER_TYPES.LOCAL], ...(await bundledServerConnection())}};
+    }
     const vendorProperties = await retrieveVendorProperties({
       server,
       serverType,
@@ -972,11 +1012,18 @@ export function initFromQueryString(loadNewSession) {
     // URL, it would run on the saved server, which may be a cloud account with saved credentials
     if (autoStartSession === AUTO_START_URL_PARAM && isStateFromUrl) {
       // at this point these can only be set using SET_STATE_FROM_URL
-      const {attachSessId, caps} = getState().builder;
-      if (attachSessId) {
-        return loadNewSession(null, attachSessId);
+      const {attachSessId, caps, serverType} = getState().builder;
+      const autoStart = () => (attachSessId ? loadNewSession(null, attachSessId) : loadNewSession(caps));
+      // All-in-one: Start Session starts the app's own server, but a link must not: it may only
+      // run a session on that server once the user has started it
+      if (serverType === SERVER_TYPES.LOCAL && hasBundledServer()) {
+        return isBundledServerRunning().then((running) =>
+          running
+            ? autoStart()
+            : showError(new Error('Start the local server, then start the session from this link.'), {secs: 0}),
+        );
       }
-      loadNewSession(caps);
+      return autoStart();
     }
   };
 }

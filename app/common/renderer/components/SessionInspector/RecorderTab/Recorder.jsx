@@ -1,3 +1,5 @@
+import {IconVideo} from '@tabler/icons-react';
+import {Button} from 'antd';
 import {useTranslation} from 'react-i18next';
 import {Refractor} from 'react-refractor';
 
@@ -20,6 +22,8 @@ const Recorder = (props) => {
     setClientFramework,
     toggleShowBoilerplate,
     clearRecording,
+    isRecording,
+    startRecording,
   } = props;
   const {t} = useTranslation();
 
@@ -57,7 +61,20 @@ const Recorder = (props) => {
         saveAs={saveAs}
       >
         {!recordedActions.length && (
-          <div className={styles.noRecordedActions}>{t('enableRecordingAndPerformActions')}</div>
+          // Starting a recording is this tab's main job, so offer it here instead of only
+          // through the icon in the inspector header
+          <div className={styles.noRecordedActions}>
+            {isRecording ? (
+              <span>{t('Recording. Tap, type and swipe in the app to add steps.')}</span>
+            ) : (
+              <>
+                <span>{t('Record your actions on the device to generate test code.')}</span>
+                <Button type="primary" icon={<IconVideo size={16} />} onClick={startRecording}>
+                  {t('Start Recording')}
+                </Button>
+              </>
+            )}
+          </div>
         )}
         {!!recordedActions.length && (
           <Refractor

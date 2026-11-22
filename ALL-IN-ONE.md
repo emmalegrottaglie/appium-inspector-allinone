@@ -32,14 +32,16 @@ so the browser build is unchanged.
 
 | Feature                          | Where to find it                                                        |
 | -------------------------------- | ----------------------------------------------------------------------- |
-| **Local Server**                 | Start screen → lower tab row → **Local Server**                         |
-| **Drivers & Plugins**            | Start screen → lower tab row → **Drivers & Plugins**                    |
-| **Tests** (Python/Robot/Ruby/JS) | Start screen → lower tab row → **Tests**                                |
+| **Local Server**                 | Start page → left rail → **Server** (left column)                       |
+| **Drivers & Plugins**            | Start page → left rail → **Server** (right column)                      |
+| **Tests** (Python/Robot/Ruby/JS) | Start page → left rail → **Tests**                                      |
 | **Raw Command**                  | Inside a live session → inspector tab → **Raw Command**                 |
 | **Scroll to & tap**              | Inside a live session → Source tab → selected-element actions (Android) |
 
-The lower tab row is the one that also holds _Capability Builder / Saved
-Capability Sets / Attach to Session_.
+The left rail's **Session** area is upstream's session builder, unchanged
+(_Capability Builder / Saved Capability Sets / Attach to Session_). The chip at
+the bottom of the rail shows the managed server's status and port, and opens the
+**Server** area when clicked.
 
 ### Screenshots
 
@@ -137,8 +139,9 @@ Same server underneath, three separate relationships — kept legible in the UI:
 
 ### 3.1 Local Server
 
-- **UI:** [`SessionBuilder/LocalServerTab/LocalServer.jsx`](app/common/renderer/components/SessionBuilder/LocalServerTab/LocalServer.jsx)
-- **Hook:** [`use-appium-server.jsx`](app/common/renderer/hooks/use-appium-server.jsx) → `{state, log, start, stop}`
+- **UI:** [`SessionBuilder/LocalServerTab/LocalServer.jsx`](app/common/renderer/components/SessionBuilder/LocalServerTab/LocalServer.jsx) (Server area), [`SessionBuilder/BundledServerTab/BundledServerTab.jsx`](app/common/renderer/components/SessionBuilder/BundledServerTab/BundledServerTab.jsx) (session target)
+- **Hook:** [`use-appium-server.jsx`](app/common/renderer/hooks/use-appium-server.jsx) → `useAppiumServer()` `{state, log, start, stop}`, `useBundledServerAddress()`
+- **Renderer lib:** [`lib/bundled-server.js`](app/common/renderer/lib/bundled-server.js) → `ensureBundledServer()`, saved address
 - **Main:** [`appium-server.js`](app/electron/main/appium-server.js), [`appium-launch.js`](app/electron/main/appium-launch.js)
 - **IPC:** `appium:start` (handle), `appium:stop` (send), `appium:getState` (handle); status pushed on `appium:status`.
 
@@ -164,6 +167,18 @@ safe here because the server is bound to loopback; session enumeration is only
 reachable by local processes. (Configurable via the `insecureFeatures` array in
 `appium-server.js`.)
 
+**Session target.** The session builder's first server tab, **Local server**,
+targets this server (upstream's `local` server type). It shows the status and
+address with one Start/Stop button and a link to change the address in the Server
+area; it has no address fields of its own. **Start Session** starts the server if
+it isn't running (the builder's spinner covers the wait), then connects to the
+address it actually listens on. The address is saved across launches, once the
+server has accepted it (an address that fails validation or a declined
+non-loopback prompt is not kept). Attach to Session lists the server's sessions
+without starting it. New desktop users start on this tab; anyone who already used
+a remote server keeps it. A `?state=...&autoStart=1` link never starts this server:
+it starts its session only if the server is already running.
+
 > **Security:** `--allow-cors` is safe only on a loopback host. The panel shows a
 > warning if you change the host to anything non-loopback — binding CORS to a
 > public address reproduces the old Appium Desktop RCE class.
@@ -176,9 +191,14 @@ reachable by local processes. (Configurable via the `insecureFeatures` array in
 - **IPC:** `extensions:list | install | update | uninstall | doctor` (all handle).
 
 A hardened wrapper over `appium {driver|plugin} {list|install|update|uninstall|doctor}`.
-The list view distinguishes **installed** (shows version, with Update / Doctor /
-Uninstall actions) from **available** (Install action). The kind toggle switches
-between drivers and plugins; each kind gets its own hook instance.
+The view is a catalog: an **Installed** list (version, Update to _x_ for a
+compatible update or Update to _x_ (major), Doctor, and Uninstall behind a
+confirmation) and an **Available** list of official extensions with one-click
+Install, each with a one-line summary of what it's for. Anything else is installed
+with **Install another driver from npm or GitHub…**, which asks for a package name,
+or a GitHub URL plus the package name in that repo. The kind toggle switches
+between drivers and plugins; each kind gets its own hook instance. A request the
+main process refuses shows in the output pane.
 
 **Install gate (security):**
 
@@ -296,7 +316,11 @@ no copy-paste.
 | File                                                                         | Responsibility                        |
 | ---------------------------------------------------------------------------- | ------------------------------------- |
 | `hooks/use-process-runner.jsx`                                               | Generic runner hook (dev/diagnostic). |
-| `hooks/use-appium-server.jsx`                                                | Server status/log + start/stop.       |
+| `hooks/use-appium-server.jsx`                                                | Server status/log + start/stop; saved address. |
+| `lib/bundled-server.js`                                                      | Saved server address, `ensureBundledServer()`. |
+| `components/Workspace/Workspace.jsx` (+ `.module.css`, `WorkspaceContext.js`) | Start page: rail, areas, server status chip. |
+| `components/SessionBuilder/BundledServerTab/BundledServerTab.jsx` (+ `.module.css`) | "Local server" session target. |
+| `components/SessionBuilder/LocalServerTab/ServerToggle.jsx`                  | The one Start/Stop server button.     |
 | `hooks/use-appium-extensions.jsx`                                            | Extension list + mutations + consent. |
 | `hooks/use-python-env.jsx`                                                   | Env status + `setup()` chain.         |
 | `hooks/use-python-tests.jsx`                                                 | Working dir, files, run, results.     |
@@ -319,9 +343,11 @@ no copy-paste.
 | `app/electron/main/main.js`                                            | `killAllProcesses()` on `before-quit`.                                        |
 | `app/electron/preload/preload.mjs`                                     | Adds `runner`, `appium`, `extensions`, `pythonEnv`, `pythonTests` namespaces. |
 | `app/common/renderer/constants/session-inspector.js`                   | `INSPECTOR_TABS.RAW_COMMAND`.                                                 |
-| `app/common/renderer/constants/session-builder.js`                     | `LOCAL_SERVER`, `EXTENSIONS`, `PYTHON_TESTS` tab keys.                        |
 | `app/common/renderer/components/SessionInspector/SessionInspector.jsx` | Raw Command tab.                                                              |
-| `app/common/renderer/components/SessionBuilder/SessionBuilder.jsx`     | Local Server / Drivers & Plugins / Python Tests tabs (desktop-gated).         |
+| `app/common/renderer/index.jsx`                                        | `/` and `/session` render the `Workspace` start page.                         |
+| `app/common/renderer/components/SessionBuilder/SessionBuilder.jsx`     | "Local server" tab first in the server tabs (desktop only).                   |
+| `app/common/renderer/actions/SessionBuilder.js`                        | `newSession` starts the bundled server; `local` kept on desktop.              |
+| `app/common/renderer/lib/vendor/local.ts`                              | Passes the local server's base path.                                          |
 | `electron-builder.json`                                                | `afterPack` hook (see §6).                                                    |
 | `.gitignore`                                                           | `resources/`.                                                                 |
 | `package.json`                                                         | `fast-xml-parser` dependency.                                                 |
@@ -448,14 +474,13 @@ cert.
 
 ## 8. Notable implementation notes
 
-- **`isDev` circular import.** `binary-resolver.js` must compute `isDev` locally
-  (`process.env.NODE_ENV === 'development'`) rather than importing it from
-  `helpers.js`. Because `helpers.js` imports the appium modules (which pull in
-  `binary-resolver`) before its own `isDev` is initialized, importing it caused a
-  temporal-dead-zone crash at startup (`Cannot access 'isDev' before
-initialization`). `process-runner.js` uses the same local-copy pattern.
-- **Desktop gating.** The three SessionBuilder panels are only rendered when
-  `window.electronIPC` exists, so the browser build is unaffected. Each panel
+- **Resources root.** `binary-resolver.js` uses `process.resourcesPath` only
+  when `app.isPackaged`; every unpackaged run reads the repo's `resources/`. It
+  must not import `isDev` from `helpers.js`: `helpers.js` imports the appium
+  modules before its own `isDev` is initialized, which caused a temporal-dead-zone
+  crash at startup. `process-runner.js` keeps a local `isDev` for the same reason.
+- **Desktop gating.** The `Workspace` start page (and so the Server and Tests
+  areas) is only rendered when `window.electronIPC` exists, so the browser build is unaffected. Each panel
   also degrades gracefully (shows a "Desktop only" notice) if its namespace is
   missing.
 - **Optional ergonomic win.** `appium-server.js` can export `getServerState()`

@@ -1,0 +1,115 @@
+.workspace {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.rail {
+  flex: 0 0 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 6px;
+  border-right: 1px solid var(--ant-color-border-secondary);
+}
+
+.railItem,
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ant-color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.railItem:hover,
+.status:hover {
+  background: var(--ant-color-fill-tertiary);
+  color: var(--ant-color-text);
+}
+
+.railItem:focus-visible,
+.status:focus-visible {
+  outline: 2px solid var(--ant-color-primary);
+  outline-offset: 1px;
+}
+
+.railItem.active {
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-primary);
+}
+
+.railSpacer {
+  flex: 1;
+}
+
+.status {
+  gap: 2px;
+  font-size: 11px;
+}
+
+.port {
+  color: var(--ant-color-text-tertiary);
+}
+
+.areas {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+}
+
+.area {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.area.hidden {
+  display: none;
+}
+
+.serverArea {
+  flex-direction: row;
+  gap: 1px;
+  background: var(--ant-color-border-secondary);
+}
+
+.serverColumn {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--ant-color-bg-layout);
+}
+
+.heading {
+  margin: 0;
+  padding: 16px 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Stack the two server columns when the window is too narrow for both */
+@media (max-width: 1000px) {
+  .serverArea {
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .serverColumn {
+    flex: 0 0 auto;
+  }
+}
