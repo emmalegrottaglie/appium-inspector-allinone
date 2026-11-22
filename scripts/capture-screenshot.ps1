@@ -9,12 +9,13 @@
 
 .PARAMETER Name
   The output file base name (no extension). Use the doc slugs:
-  local-server | drivers-plugins | python-tests | raw-command
+  start-page | server | inspector | recorder | raw-command | tests | tests-during-session |
+  tests-environment
 
 .EXAMPLE
-  # 1. Open the app, click the "Local Server" tab
+  # 1. Open the app, open the Server area
   # 2. Run:
-  powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name local-server
+  powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name server
 #>
 param(
   [Parameter(Mandatory = $true)]

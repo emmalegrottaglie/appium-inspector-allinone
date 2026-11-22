@@ -30,59 +30,75 @@ authoring); Robot/Ruby/JS run via detected system toolchains.
 All new UI is gated to the **desktop app** (it needs the Electron IPC bridge),
 so the browser build is unchanged.
 
-| Feature                          | Where to find it                                                        |
-| -------------------------------- | ----------------------------------------------------------------------- |
-| **Local Server**                 | Start page → left rail → **Server** (left column)                       |
-| **Drivers & Plugins**            | Start page → left rail → **Server** (right column)                      |
-| **Tests** (Python/Robot/Ruby/JS) | Start page → left rail → **Tests**                                      |
-| **Raw Command**                  | Inside a live session → inspector tab → **Raw Command**                 |
-| **Scroll to & tap**              | Inside a live session → Source tab → selected-element actions (Android) |
+A left rail switches between three areas, in workflow order. It stays on screen
+while a session is open, so the server and your tests are one click away from
+the inspector.
 
-The left rail's **Session** area is upstream's session builder, unchanged
-(_Capability Builder / Saved Capability Sets / Attach to Session_). The chip at
-the bottom of the rail shows the managed server's status and port, and opens the
-**Server** area when clicked.
+| Area        | What's there                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Server**  | **Local server** (start/stop, address, live log) and **Drivers & Plugins** (catalog) side by side                    |
+| **Session** | Upstream's session builder, with a **Local server** target first in its server tabs; the inspector once a session opens |
+| **Tests**   | Test folder, in-app editor and runner (Python, Robot, Ruby, JS), and the **Environment** table                     |
+
+Inside a live session, the inspector adds **Raw Command** (a tab), a **Start
+Recording** button in the Recorder tab, and **Scroll to & tap** (Source tab →
+selected-element actions, Android). The chip at the bottom of the rail shows the
+local server's status and port, and opens the Server area when clicked.
 
 ### Screenshots
 
-> These images live in [`docs/assets/all-in-one/`](docs/assets/all-in-one/). To
-> (re)generate them, launch the app, navigate to each tab, and run the capture
-> helper once per panel:
->
-> ```powershell
-> powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name local-server
-> powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name drivers-plugins
-> powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name python-tests
-> powershell -ExecutionPolicy Bypass -File scripts/capture-screenshot.ps1 -Name raw-command
-> ```
+> These images live in [`docs/assets/all-in-one/`](docs/assets/all-in-one/), at
+> 1280×800. See that folder's README for how to regenerate them.
 
-**Local Server**
+**Session** — pick **Local server** and Start Session; the server starts if it
+isn't running.
 
-![Local Server panel](docs/assets/all-in-one/local-server.png)
+![Session builder with the Local server target](docs/assets/all-in-one/start-page.png)
 
-**Drivers & Plugins**
+**Server** — the local server and its log, next to the drivers and plugins
+catalog.
 
-![Drivers & Plugins panel](docs/assets/all-in-one/drivers-plugins.png)
+![Server area](docs/assets/all-in-one/server.png)
 
-**Python Tests**
+**Inspector** — the rail stays available during a session.
 
-![Python Tests panel](docs/assets/all-in-one/python-tests.png)
+![Session inspector](docs/assets/all-in-one/inspector.png)
 
-**Raw Command** (inside a live session)
+**Recorder** — start recording from the tab, then **Save As** a test in any
+supported language.
 
-![Raw Command panel](docs/assets/all-in-one/raw-command.png)
+![Recorder tab](docs/assets/all-in-one/recorder.png)
+
+**Raw Command** — send any WebDriver request to the live session.
+
+![Raw Command tab](docs/assets/all-in-one/raw-command.png)
+
+**Tests** — edit and run tests, with a per-test pass/fail summary.
+
+![Tests area after a run](docs/assets/all-in-one/tests.png)
+
+**Tests during a session** — reachable without quitting the inspector, with a
+note that a test starts its own session.
+
+![Tests area while a session is open](docs/assets/all-in-one/tests-during-session.png)
+
+**Environment** — one row per toolchain, with the action that applies.
+
+![Environment table](docs/assets/all-in-one/tests-environment.png)
 
 ### Typical first run
 
-1. **Local Server → Start Server.** Status goes `stopped → starting → running`.
-   The badge shows the source: `bundled` (shipped with the app) or `system`
-   (an `appium` found on your PATH).
-2. **Drivers & Plugins → Drivers → install `uiautomator2`** (or `xcuitest` on
-   macOS). It streams the install log, then refreshes the list.
-3. Build your capabilities in **Capability Builder** as usual and **Start
-   Session** against `http://127.0.0.1:4723`.
-4. (Optional) **Python Tests → Set up environment**, choose a working directory,
-   and **Run tests**.
+1. **Server → Drivers → Install `uiautomator2`** (or `xcuitest` on macOS). The
+   install log streams in, then the list refreshes.
+2. **Session → Local server**, build your capabilities in **Capability
+   Builder**, and **Start Session**. The local server starts first if it isn't
+   running (its status shows in the rail).
+3. In the inspector, open **Recorder → Start Recording**, act on the app, then
+   **Save As** a test. The notification's **Open Tests** button takes you to the
+   Tests area, session still open.
+4. **Tests → Open test folder** (the folder you saved into), then **Run all
+   tests**. On first use, **Environment → Set up** creates the Python test
+   environment.
 
 ---
 
@@ -344,7 +360,7 @@ no copy-paste.
 | `app/electron/preload/preload.mjs`                                     | Adds `runner`, `appium`, `extensions`, `pythonEnv`, `pythonTests` namespaces. |
 | `app/common/renderer/constants/session-inspector.js`                   | `INSPECTOR_TABS.RAW_COMMAND`.                                                 |
 | `app/common/renderer/components/SessionInspector/SessionInspector.jsx` | Raw Command tab.                                                              |
-| `app/common/renderer/index.jsx`                                        | `/` and `/session` render the `Workspace` start page.                         |
+| `app/common/renderer/index.jsx`                                        | `Workspace` is a layout route around the builder and inspector routes.        |
 | `app/common/renderer/components/SessionBuilder/SessionBuilder.jsx`     | "Local server" tab first in the server tabs (desktop only).                   |
 | `app/common/renderer/actions/SessionBuilder.js`                        | `newSession` starts the bundled server; `local` kept on desktop.              |
 | `app/common/renderer/lib/vendor/local.ts`                              | Passes the local server's base path.                                          |
