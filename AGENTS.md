@@ -170,7 +170,7 @@ it, switch preload to `contextBridge.exposeInMainWorld`.)
 
 | Feature                      | UI                                                                                      | Hook                                                             | Main module                                              | IPC channels                                        |
 | ---------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------- |
-| **Local Server**             | `SessionBuilder/LocalServerTab/LocalServer.jsx`                                         | `use-appium-server.jsx`                                          | `appium-server.js`, `appium-launch.js`                   | `appium:start/stop/getState`, `appium:status`       |
+| **Local Server**             | `SessionBuilder/LocalServerTab/LocalServer.jsx` (Server area), `SessionBuilder/BundledServerTab/BundledServerTab.jsx` (session target), `Workspace/Workspace.jsx` (status chip) | `use-appium-server.jsx` (+ `lib/bundled-server.js`)              | `appium-server.js`, `appium-launch.js`                   | `appium:start/stop/getState`, `appium:status`       |
 | **Drivers & Plugins**        | `SessionBuilder/ExtensionsTab/Extensions.jsx`                                           | `use-appium-extensions.jsx`                                      | `appium-extensions.js`                                   | `extensions:list/install/update/uninstall/doctor`   |
 | **Tests (Py/Robot/Ruby/JS)** | `SessionBuilder/PythonTab/PythonPanel.jsx`                                              | `use-python-env.jsx`, `use-python-tests.jsx`, `use-runtimes.jsx` | `python-env.js`, `python-tests.js`, `system-runtimes.js` | `python:*`, `runtimes:*`, result on `python:result` |
 | **Raw Command**              | `SessionInspector/RawCommandTab/RawCommand.jsx`                                         | — (renderer-only `fetch`)                                        | —                                                        | none                                                |
@@ -179,11 +179,16 @@ it, switch preload to `contextBridge.exposeInMainWorld`.)
 
 Notes that bite if you forget them:
 
-- **Start page = `Workspace/Workspace.jsx`** (routed from `index.jsx` for `/` and
-  `/session`). A left rail switches three areas, in workflow order: **Server**
-  (Local Server and Drivers & Plugins side by side), **Session** (upstream's
-  `SessionBuilder.jsx`) and **Tests** (`PythonPanel`). The app still opens on
-  Session. Server and Tests mount the first time they're opened (so the driver
+- **Desktop layout = `Workspace/Workspace.jsx`**, a layout route in `index.jsx`
+  around `/`, `/session` and `/inspector`, so it stays mounted while a session
+  opens and closes. A left rail switches three areas, in workflow order:
+  **Server** (Local Server and Drivers & Plugins side by side), **Session** (an
+  `<Outlet />`: upstream's `SessionBuilder.jsx`, or the inspector during a
+  session) and **Tests** (`PythonPanel`, which gets `active` to refresh its file
+  list when shown, and warns that a test's own session usually ends the
+  inspector's on the same device). The app still opens on Session. The
+  Recorder's Save As shows a notification with **Open Tests**
+  (`WorkspaceContext.openArea`). Server and Tests mount the first time they're opened (so the driver
   list and toolchain probes only run for people who use them), then stay
   mounted and are only hidden, so switching never resets the builder or a run.
   The rail's bottom chip shows the managed server's live status
@@ -216,9 +221,11 @@ Notes that bite if you forget them:
   parsed pass/fail summary (JUnit/xUnit → `fast-xml-parser`); Ruby/JS are
   exit-code only. Ruby/Node/Oxygen are **not bundled** — detected on PATH.
 - **Tests panel layout (`PythonPanel.jsx`):** two internal antd sub-tabs —
-  **Tests** (a two-column `testsLayout`: files+editor on the left, run controls +
-  result banner + `outputLog` on the right) and **Environment** (venv setup +
-  the Languages & runtimes card). The **result banner** logic is intentional:
+  **Tests** (an "Open test folder" empty state until a folder is chosen, then a
+  two-column `testsLayout`: files+editor on the left, run controls + result
+  banner + `outputLog` on the right) and **Environment** (one table row per
+  toolchain — Python, test environment, Robot, Ruby, Node — with version, status
+  and its one action; only a needed action is primary). The **result banner** logic is intentional:
   structured (pytest/robot) passes only if `failures+errors===0` AND the process
   exited cleanly AND at least one test ran (`0 tests` → **NO TESTS**, not green);
   Ruby/JS pass iff exit code 0 (**PASSED / FAILED (exit N)**). The `run` object
@@ -404,7 +411,8 @@ git diff --name-only --diff-filter=U                     # list conflicts
 - [ ] `npm run lint` (oxlint) has **0 errors** (warnings OK); `npm run format`
       (oxfmt) applied to any new/changed files.
 - [ ] Feature strings present in the built bundle (`dist/renderer/assets/*.js`):
-      `Raw Command`, `Save test as a file`, `scrollIntoView`, `Languages & runtimes`.
+      `Raw Command`, `Save test as a file`, `scrollIntoView`, `Open test folder`,
+      `Change address`.
 - [ ] After an upstream merge: `git rev-list --left-right --count upstream/main...HEAD`
       shows `0` behind; our features grep-confirmed present.
 - [ ] (If packaging) `release/win-unpacked/resources/appium/node_modules/appium/index.js`

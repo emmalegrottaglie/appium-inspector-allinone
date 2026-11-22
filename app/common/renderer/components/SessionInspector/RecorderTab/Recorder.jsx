@@ -1,9 +1,12 @@
 import {IconVideo} from '@tabler/icons-react';
 import {Button} from 'antd';
+import {useContext} from 'react';
 import {useTranslation} from 'react-i18next';
 import {Refractor} from 'react-refractor';
 
 import {CLIENT_FRAMEWORK_MAP} from '../../../lib/client-frameworks/map.js';
+import {notification} from '../../../utils/notification.js';
+import {WorkspaceContext} from '../../Workspace/WorkspaceContext.js';
 import RecorderTabCard from './RecorderTabCard.jsx';
 
 import inspectorStyles from '../SessionInspector.module.css';
@@ -26,6 +29,7 @@ const Recorder = (props) => {
     startRecording,
   } = props;
   const {t} = useTranslation();
+  const workspace = useContext(WorkspaceContext);
 
   const {serverUrl, serverUrlParts} = serverDetails;
   const ClientFrameworkClass = CLIENT_FRAMEWORK_MAP[clientFramework];
@@ -41,11 +45,23 @@ const Recorder = (props) => {
     const Cls = CLIENT_FRAMEWORK_MAP[fwId];
     const fw = new Cls(serverUrl, serverUrlParts, sessionCaps);
     fw.actions = recordedActions;
-    await window.electronIPC.codeExport.saveAs({
+    const res = await window.electronIPC.codeExport.saveAs({
       content: fw.getCodeString(true),
       language: Cls.refractorLang,
       defaultName: 'recorded-test',
     });
+    // Point at the next step, running it, without leaving the session
+    if (res && !res.canceled) {
+      notification.success({
+        title: t('Test saved'),
+        description: res.path,
+        actions: workspace && (
+          <Button size="small" type="primary" onClick={() => workspace.openArea('tests')}>
+            {t('Open Tests')}
+          </Button>
+        ),
+      });
+    }
   };
 
   return (

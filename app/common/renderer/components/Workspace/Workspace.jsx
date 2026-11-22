@@ -1,6 +1,7 @@
 import {IconDeviceMobile, IconServer2, IconTestPipe} from '@tabler/icons-react';
 import {useCallback, useMemo, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {Outlet} from 'react-router';
 
 import {useAppiumServer} from '../../hooks/use-appium-server.jsx';
 import Extensions from '../SessionBuilder/ExtensionsTab/Extensions.jsx';
@@ -10,7 +11,6 @@ import ServerStatusDot, {
   serverStatusOf,
 } from '../SessionBuilder/LocalServerTab/ServerStatusDot.jsx';
 import PythonPanel from '../SessionBuilder/PythonTab/PythonPanel.jsx';
-import SessionBuilderPage from '../SessionBuilder/SessionBuilder.jsx';
 import {WorkspaceContext} from './WorkspaceContext.js';
 
 import styles from './Workspace.module.css';
@@ -43,9 +43,10 @@ const ServerStatus = ({onOpen}) => {
 };
 
 /**
- * Top-level layout of the desktop app's start page. The upstream session builder stays as it
- * is under "Session"; the all-in-one tools get their own areas instead of sharing its tab row,
- * so they don't inherit its server bar and Start Session footer. An area mounts the first time
+ * Top-level layout of the desktop app. The Session area shows the current route: upstream's
+ * session builder, or the inspector while a session is open. The all-in-one tools get their own
+ * areas instead of sharing the builder's tab row, so they don't inherit its server bar and Start
+ * Session footer, and they stay reachable during a session. An area mounts the first time
  * it's opened (so the driver list and toolchain checks only run for people who use them), then
  * stays mounted and is only hidden, so switching areas never resets the builder or a running test.
  */
@@ -59,9 +60,9 @@ const Workspace = () => {
   }, []);
   const navigation = useMemo(() => ({openArea}), [openArea]);
 
-  // Browser and plugin builds have no main process for these tools: show the builder alone
+  // Browser and plugin builds have no main process for these tools: show the route alone
   if (!window.electronIPC) {
-    return <SessionBuilderPage />;
+    return <Outlet />;
   }
 
   return (
@@ -85,7 +86,7 @@ const Workspace = () => {
         </nav>
         <main className={styles.areas}>
           <div className={`${styles.area} ${area === 'session' ? '' : styles.hidden}`}>
-            <SessionBuilderPage />
+            <Outlet />
           </div>
           <div className={`${styles.area} ${styles.serverArea} ${area === 'server' ? '' : styles.hidden}`}>
             {opened.has('server') && (
@@ -102,7 +103,7 @@ const Workspace = () => {
             )}
           </div>
           <div className={`${styles.area} ${area === 'tests' ? '' : styles.hidden}`}>
-            {opened.has('tests') && <PythonPanel />}
+            {opened.has('tests') && <PythonPanel active={area === 'tests'} />}
           </div>
         </main>
       </div>
