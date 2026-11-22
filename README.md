@@ -33,19 +33,23 @@ This is a fork of [appium/appium-inspector](https://github.com/appium/appium-ins
 extended into a **self-contained desktop app** — everything you need to inspect _and_
 automate, with no separate Appium install, driver setup, or Python wiring. From the GUI you can:
 
-- **🖥️ Run a bundled Appium server** — Appium 3.5.0 ships inside the app. Start/stop it,
-  watch the live log, see whether it's `bundled` or `system`.
-- **🧩 Manage drivers & plugins** — install / update / uninstall / doctor Appium
-  extensions into an app-isolated home, with a third-party safety gate.
-- **🐍 Author & run Python tests** — auto-detect Python, build a venv, install
-  `Appium-Python-Client` + `pytest`, edit tests in-app (with one-click **Format**),
-  and run them with a parsed pass/fail summary.
-- **📼 Record → save → run** — record actions, **Save As** a test in any of 8
-  languages, drop it in the runner, and watch it go green.
+- **🖥️ Run a bundled Appium server** — Appium 3.5.0 ships inside the app. Pick **Local
+  server** and Start Session: the server starts on its own if it isn't running. Its
+  status stays in view on every page.
+- **🧩 Manage drivers & plugins** — a catalog of the official drivers and plugins with
+  one-click install, updates and uninstall, in an app-isolated home, with a safety gate
+  for third-party packages.
+- **📼 Record → save → run** — record actions, **Save As** a test in any of 8 languages,
+  and run it from the **Tests** area without leaving the session.
+- **🧪 Author & run tests** — Python/pytest with an in-app editor and one-click
+  **Format**, plus Robot Framework, Ruby and JavaScript (WebdriverIO) through your
+  installed toolchains, with a per-test pass/fail summary.
 - **⚡ Raw WebDriver commands** — a Postman-style panel that talks straight to the
   live session's WebDriver endpoints.
 
-![All-in-One — Drivers & Plugins, Local Server, Python Tests](./docs/assets/all-in-one/drivers-plugins.png)
+![All-in-One: the Server area, with the local server log and the drivers catalog](./docs/assets/all-in-one/server.png)
+
+![All-in-One: the Tests area after a passing run](./docs/assets/all-in-one/tests.png)
 
 📖 **Full details:** [**ALL-IN-ONE.md**](ALL-IN-ONE.md) (architecture, per-feature
 reference, build steps, security model, troubleshooting) · [CHANGELOG](CHANGELOG.all-in-one.md)

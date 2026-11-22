@@ -81,6 +81,14 @@ running → stopping → error`), HTTP `/status` readiness polling, a streamed
   and Drivers & Plugins side by side, the log and driver list filling the window),
   **Session** (upstream's builder, unchanged) and **Tests**. A chip at the bottom of the rail shows
   the managed server's status and port on every page.
+- **Server and Tests stay reachable during a session.** The rail stays on
+  screen in the inspector, so a recorded test can be saved and run without
+  quitting the session (the Tests area notes that a test's own session usually
+  ends the inspector's on the same device). Save As in the Recorder offers
+  **Open Tests**, and the Tests file list refreshes when the area is opened. The
+  server log and a running test also survive opening and closing a session.
+- **New documentation screenshots** for the README and ALL-IN-ONE.md, covering
+  every area at 1280×800.
 - **"Local server" session target.** The session builder's server tabs start
   with **Local server**, the app's own server. Start Session starts it when it
   isn't running and connects to the address it listens on, so recording no longer

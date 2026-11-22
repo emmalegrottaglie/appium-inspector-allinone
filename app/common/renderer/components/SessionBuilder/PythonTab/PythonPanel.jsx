@@ -10,6 +10,7 @@ import {
 import {Alert, Badge, Button, Dropdown, Empty, Input, List, Space, Table, Tabs, Tag, Typography} from 'antd';
 import {useEffect, useRef, useState} from 'react';
 import {useTranslation} from 'react-i18next';
+import {useSelector} from 'react-redux';
 
 import {usePythonEnv} from '../../../hooks/use-python-env.jsx';
 import {usePythonTests} from '../../../hooks/use-python-tests.jsx';
@@ -119,7 +120,7 @@ function scaffoldTest(raw, {funcName = 'test_recorded', implicitWait = false} = 
 }
 
 /** Python environment setup + pytest runner. Desktop-only. */
-const PythonPanel = () => {
+const PythonPanel = ({active = true}) => {
   const {t} = useTranslation();
   const {status, phase, log, refresh, setup, installRobot} = usePythonEnv();
   const {workingDir, files, run, runLog, result, pickDir, refreshFiles, readFile, saveFile, runTests} =
@@ -127,6 +128,15 @@ const PythonPanel = () => {
   const {runtimes, op: rtOp, log: rtLog, installRubyGems, installJsDeps} = useRuntimes();
   const [keyword, setKeyword] = useState('');
   const [panelTab, setPanelTab] = useState('tests'); // 'environment' | 'tests'
+  // The inspector's live session, if one is open (the Tests area stays reachable during it)
+  const inspectorSessionOpen = useSelector((state) => !!state.inspector?.driver);
+
+  // Pick up files saved while the area was hidden, e.g. a test saved from the Recorder
+  useEffect(() => {
+    if (active) {
+      refreshFiles();
+    }
+  }, [active, refreshFiles]);
 
   // In-app editor state
   const [openFile, setOpenFile] = useState(null); // relative path currently open
@@ -582,6 +592,16 @@ const PythonPanel = () => {
           </Button>
         </Space.Compact>
         {!ready && <Text type="warning">{t('Set up the environment before running tests.')}</Text>}
+        {inspectorSessionOpen && (
+          <Alert
+            type="info"
+            showIcon
+            title={t('A session is open in the inspector')}
+            description={t(
+              'A test starts its own session. On the same device, that usually ends the inspector’s session.',
+            )}
+          />
+        )}
 
         <Space wrap align="center" className={styles.resultRow}>
           <Text strong>{t('Result')}</Text>
